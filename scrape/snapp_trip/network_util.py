@@ -19,8 +19,10 @@ def get_content(url:str, headers:dict={}) -> bytes:
     default_headers = {'User-Agent' : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0"}
     headers.update(default_headers)
 
-    url_parts = urlparse(url)
-    url = url_parts._replace(path=quote(url_parts.path)).geturl()
+    if not "%" in url:
+        url_parts = urlparse(url)
+        url = url_parts._replace(path=quote(url_parts.path)).geturl()
+        
     try:
         req = Request(url, headers=headers)
     

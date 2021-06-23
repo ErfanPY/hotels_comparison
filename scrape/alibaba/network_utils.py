@@ -1,7 +1,7 @@
 import json
-import requests
 from datetime import datetime, timedelta
 
+import requests
 
 def get_search_session_id(city_id, offset):
     today_date = datetime.now() + timedelta(days=offset)
