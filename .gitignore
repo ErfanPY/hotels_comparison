@@ -1,3 +1,4 @@
 /.vscode
 /sql_dumps
 /temp
+__pycache__
