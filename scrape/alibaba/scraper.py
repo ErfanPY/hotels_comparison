@@ -1,13 +1,19 @@
 import re
+import socket
+import sys
 import time
 from datetime import datetime
 from os import name
-from urllib.parse import urljoin, urlparse
 
+import socks
 from scrape.db_util import get_db_connection, insert_select_id
 
 from .network_utils import *
 
+socks.set_default_proxy("host", "port")
+if '-p' in sys.argv:
+    socket.socket = socks.socksocket
+    
 DB_PATH = "alibaba/data.db"
 BASE_URL = "https://www.alibaba.ir/hotel/"
 SLEEP_TIME = 3
@@ -49,14 +55,14 @@ def scrape_hotel(city_name, hotel, session_id, date_from, today):
             table='tblHotels',
             key_value={
                 'htlCity':city_name,
-                'htlFaName':hotel['name'].get('fa')[:49],
-                'htlEnName':hotel['name'].get('en')[:49],
+                'htlFaName':hotel['name'].get('fa'),
+                'htlEnName':hotel['name'].get('en'),
                 "htlUrl": hotel_url,
                 "htlFrom": 'A'
                 },
             id_field='htlID',
             identifier_condition = {
-                "htlFaName":hotel['name'].get('fa')[:49]
+                "htlFaName":hotel['name'].get('fa')
                 },
             conn=conn
             )
@@ -90,13 +96,13 @@ def scrape_room(room, hotel_id, date_from, today):
         room_id = insert_select_id(
             table='tblRooms',
             key_value={
-                'romName':room['name'][:49],
+                'romName':room['name'],
                 "romType":get_room_types(room['name']),
                 'rom_htlID':hotel_id
                 },
             id_field='romID',
             identifier_condition = {
-                "romName":room['name'][:49],
+                "romName":room['name'],
                 'rom_htlID':hotel_id
                 },
             conn=conn
@@ -135,11 +141,11 @@ def get_room_types(room_name):
         "سهخوابه":
         'T',
         'چهارخوابه':
-        'Q'
-        # "تویین":
-        # "Twin",
-        # "دابل":
-        # "D",
+        'Q',
+        "تویین":
+        "2",
+        "دابل":
+        "D",
     }
 
     for type_name, abrv in types_abrv.items():
@@ -150,18 +156,6 @@ def get_room_types(room_name):
 
 
 if __name__ == "__main__":
-    # main()
+    main()
 
-    test_city = 'mashhad'
-    for offset in range(30):
-        session_id, date_from = get_search_session_id(city_ids[test_city], offset)
-        scrape_hotel(test_city,
-            {
-                'id': 'dh-69fd67fd5dfdfd',
-                'name': {'en': 'mashhad-neginpasargad', 'fa': 'نگین پاسارگاد'},
-                'link': 'ir-mashhad/mashhad-neginpasargad'
-            },
-            session_id, # session_id
-            date_from, # today
-            date_from  # today
-            )
+    
