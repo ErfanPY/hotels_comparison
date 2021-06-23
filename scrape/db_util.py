@@ -29,7 +29,7 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
     conn.commit()
 
     if not id_field is None:
-        identifier_string = ' AND '.join(f"{key} like '%{str(value)[:49]}%'" for key, value in identifier_condition.items())
+        identifier_string = ' AND '.join(f"{key} like '%{value}%'" for key, value in identifier_condition.items())
         select_id_query = "SELECT {} from {} WHERE {}".format(id_field, table, identifier_string)
         
         curs.execute(select_id_query)
@@ -53,4 +53,27 @@ def update(table:str, key_value:dict, condition:str, conn):
     return res
 
 
-# select
+def select(table:str, select_columns:list, and_conditions:dict={}, extra_conditions:str="", conn=None):
+    curs = conn.cursor(buffered=True, dictionary=True)
+
+    select_columns_string = ', '.join(select_columns)
+    
+    and_string = ' AND '.join(f"{key} like '%{value}%'" for key, value in and_conditions.items())
+    and_string += ' WHERE' if and_string else ''
+    
+    select_id_query = "SELECT {} from {} {} {};".format(select_columns_string, table, and_string, extra_conditions)
+    
+    curs.execute(select_id_query)
+
+    selected_columns = curs.fetchone()
+    
+    return selected_columns
+
+def custom(query_string:str, conn):
+    curs = conn.cursor(buffered=True, dictionary=True)
+
+    curs.execute(query_string)
+
+    result = curs.fetchall()
+    
+    return result

@@ -2,3 +2,4 @@
 /sql_dumps
 /temp
 __pycache__
+*.log
