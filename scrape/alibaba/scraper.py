@@ -46,7 +46,19 @@ def main():
                 scrape_hotel(city_name, hotel, session_id, date_from, today)
 
 
-def scrape_hotel(city_name, hotel, session_id, date_from, today):
+def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today:str):
+    """Scrape and save hotel and cals rooms scraper.
+
+    Args:
+        city_name (str): The english name of search city.
+        hotel (dict): Contains hotel data (id, name).
+        session_id (str): A session id to search in snaptrip site
+        date_from (str): Formated date of search date range start.
+        today (str): Frmated date of today for InsertionDate
+
+    Returns:
+        None
+    """
     hotel_site_id = hotel["id"]
     hotel_url = urljoin(BASE_URL, hotel['link'])
 
@@ -67,7 +79,6 @@ def scrape_hotel(city_name, hotel, session_id, date_from, today):
             conn=conn
         )
 
-    # places[i](site_id _id, name, priority, location, type, distance)
 
     final_result = False
     while not final_result:
@@ -83,7 +94,19 @@ def scrape_hotel(city_name, hotel, session_id, date_from, today):
             scrape_room(room, hotel_id, date_from, today)
 
 
-def scrape_room(room, hotel_id, date_from, today):
+def scrape_room(room:dict, hotel_id:int, date_from:str, today:str) -> None:
+    """Scrape and save room 
+
+    Args:
+        room (dict): A dictionry of room data (contains name, name_en, price, boardPrice).
+        hotel_id (int): ID of hotel in out database.
+        date_from (str): Formated date of search date range start.
+        today (str): Frmated date of today for InsertionDate
+
+    Returns:
+        None
+    """
+
     print(
         room['name'],
         room['name_en'],
@@ -91,7 +114,6 @@ def scrape_room(room, hotel_id, date_from, today):
         room['boardPrice']
     )
     with get_db_connection() as conn:
-        hotel_id_and_name_en = '|'.join((hotel_id, room['name_en']))
 
         room_id = insert_select_id(
             table='tblRooms',
@@ -122,7 +144,16 @@ def scrape_room(room, hotel_id, date_from, today):
         )
 
 
-def get_room_types(room_name):
+def get_room_types(room_name:str)-> str:
+    """Gets type of room by searching abbreviation keywoards on room name.
+
+    Args:
+        room_name (str): room name.
+
+    Returns:
+        str: room type
+    """
+
     search_room_name = re.sub('\W+', '', room_name)
 
     types_abrv = {

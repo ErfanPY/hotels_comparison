@@ -219,6 +219,7 @@ def get_room_types(room_name: str) -> str:
     Returns:
         str: room type
     """
+    
     search_room_name = re.sub('\W+', '', room_name)
 
     types_abrv = {
