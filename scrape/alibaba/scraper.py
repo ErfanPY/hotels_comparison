@@ -14,7 +14,7 @@ from .network_utils import *
 socks.set_default_proxy("host", "port")
 if '-p' in sys.argv:
     socket.socket = socks.socksocket
-    
+
 DB_PATH = "alibaba/data.db"
 BASE_URL = "https://www.alibaba.ir/hotel/"
 SLEEP_TIME = 3
@@ -22,16 +22,16 @@ SLEEP_TIME = 3
 city_ids = {
     'mashhad': '5be3f68be9a116befc66701b',
     'shiraz': '5be3f68be9a116befc6669e6'
-    }
+}
 
 
 def main():
 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
-    
+
     for day_offset in range(30):
         for city_name, city_id in city_ids.items():
-            
+
             session_id, date_from = get_search_session_id(city_id, day_offset)
 
             completed = False
@@ -42,9 +42,9 @@ def main():
 
             for hotel in hotels_data["result"]["result"]:
                 time.sleep(SLEEP_TIME)
-                
+
                 scrape_hotel(city_name, hotel, session_id, date_from, today)
-                        
+
 
 def scrape_hotel(city_name, hotel, session_id, date_from, today):
     hotel_site_id = hotel["id"]
@@ -59,13 +59,13 @@ def scrape_hotel(city_name, hotel, session_id, date_from, today):
                 'htlEnName': hotel['name'].get('en'),
                 "htlUrl": hotel_url,
                 "htlFrom": 'A'
-                },
+            },
             id_field='htlID',
             identifier_condition={
                 "htlFaName": hotel['name'].get('fa')
-                },
+            },
             conn=conn
-            )
+        )
 
     # places[i](site_id _id, name, priority, location, type, distance)
 
@@ -99,14 +99,14 @@ def scrape_room(room, hotel_id, date_from, today):
                 'romName': room['name'],
                 "romType": get_room_types(room['name']),
                 'rom_htlID': hotel_id
-                },
+            },
             id_field='romID',
             identifier_condition={
                 "romName": room['name'],
                 'rom_htlID': hotel_id
-                },
+            },
             conn=conn
-            )
+        )
         insert_select_id(
             table="tblAvailabilityInfo",
             key_value={
@@ -119,12 +119,12 @@ def scrape_room(room, hotel_id, date_from, today):
             id_field=None,
             identifier_condition={},
             conn=conn
-            )  
+        )
 
 
 def get_room_types(room_name):
     search_room_name = re.sub('\W+', '', room_name)
-    
+
     types_abrv = {
         "یکتخته":
         'S',
@@ -158,4 +158,3 @@ def get_room_types(room_name):
 if __name__ == "__main__":
     main()
 
-    
