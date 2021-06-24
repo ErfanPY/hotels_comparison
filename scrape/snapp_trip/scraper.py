@@ -1,13 +1,24 @@
 import json
+import logging
 import queue
 import re
+import socket
+import sys
 import time
-from datetime import date, datetime, timedelta
-from urllib.parse import urljoin, urlparse
+from datetime import datetime, timedelta
+from urllib.parse import urljoin
 
+import socks
+from bs4 import BeautifulSoup
 from scrape.db_util import get_db_connection, insert_select_id
 
-from .network_util import get_content, get_content_make_soup
+from .network_util import get_content, get_content_make_soup, urlparse
+
+socks.set_default_proxy("host", "port")
+if '-p' in sys.argv:
+    socket.socket = socks.socksocket
+
+logger = logging.getLogger(__name__)
 
 en_cities = {
         'شیراز':
