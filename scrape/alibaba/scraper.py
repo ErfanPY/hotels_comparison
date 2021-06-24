@@ -4,6 +4,7 @@ import sys
 import time
 from datetime import datetime
 from os import name
+from urllib.parse import urljoin
 
 import socks
 from scrape.db_util import get_db_connection, insert_select_id
@@ -19,15 +20,15 @@ BASE_URL = "https://www.alibaba.ir/hotel/"
 SLEEP_TIME = 3
 
 city_ids = {
-        'mashhad' : '5be3f68be9a116befc66701b',
-        'shiraz' : '5be3f68be9a116befc6669e6'
+    'mashhad': '5be3f68be9a116befc66701b',
+    'shiraz': '5be3f68be9a116befc6669e6'
     }
+
 
 def main():
 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
     
-
     for day_offset in range(30):
         for city_name, city_id in city_ids.items():
             
@@ -39,7 +40,6 @@ def main():
                 completed = hotels_data['result']['lastChunk']
                 time.sleep(SLEEP_TIME)
 
-            
             for hotel in hotels_data["result"]["result"]:
                 time.sleep(SLEEP_TIME)
                 
@@ -54,15 +54,15 @@ def scrape_hotel(city_name, hotel, session_id, date_from, today):
         hotel_id = insert_select_id(
             table='tblHotels',
             key_value={
-                'htlCity':city_name,
-                'htlFaName':hotel['name'].get('fa'),
-                'htlEnName':hotel['name'].get('en'),
+                'htlCity': city_name,
+                'htlFaName': hotel['name'].get('fa'),
+                'htlEnName': hotel['name'].get('en'),
                 "htlUrl": hotel_url,
                 "htlFrom": 'A'
                 },
             id_field='htlID',
-            identifier_condition = {
-                "htlFaName":hotel['name'].get('fa')
+            identifier_condition={
+                "htlFaName": hotel['name'].get('fa')
                 },
             conn=conn
             )
@@ -96,14 +96,14 @@ def scrape_room(room, hotel_id, date_from, today):
         room_id = insert_select_id(
             table='tblRooms',
             key_value={
-                'romName':room['name'],
-                "romType":get_room_types(room['name']),
-                'rom_htlID':hotel_id
+                'romName': room['name'],
+                "romType": get_room_types(room['name']),
+                'rom_htlID': hotel_id
                 },
             id_field='romID',
-            identifier_condition = {
-                "romName":room['name'],
-                'rom_htlID':hotel_id
+            identifier_condition={
+                "romName": room['name'],
+                'rom_htlID': hotel_id
                 },
             conn=conn
             )
@@ -117,7 +117,7 @@ def scrape_room(room, hotel_id, date_from, today):
                 "avlDiscountPrice": room['price']
             },
             id_field=None,
-            identifier_condition = {},
+            identifier_condition={},
             conn=conn
             )  
 
@@ -125,7 +125,7 @@ def scrape_room(room, hotel_id, date_from, today):
 def get_room_types(room_name):
     search_room_name = re.sub('\W+', '', room_name)
     
-    types_abrv={
+    types_abrv = {
         "یکتخته":
         'S',
         "دوتخته":
