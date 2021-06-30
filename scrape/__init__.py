@@ -4,48 +4,27 @@ LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,
     'formatters': {
-        'standard': {
-            'format': '%(asctime)s [%(levelname)s] [%(threadName)s:%(thread)d] : %(message)s',
-        },
         'console_print': {
-            'format': '%(asctime)s -- %(message)s'
+            'format': '[%(levelname)s] %(asctime)s -- %(message)s'
         },
-        'web_log': {
-            'format': '%(message)s\n------------------------------------\n'
-        }
     },
     'handlers': {
         'default': {
             'level': 'DEBUG',
             'formatter': 'console_print',
             'class': 'logging.StreamHandler',
-            'stream': 'ext://sys.stdout',  # Default is stderr
+            'stream': 'ext://sys.stdout',  
         },
         'file': {
-            'level': 'INFO',
+            'level': 'ERROR',
             'formatter': 'console_print',
             'class': 'logging.FileHandler',
             'filename': 'log.log',
         }
     },
     'loggers': {
-        '': {  # root logger
-            'handlers': ['default'],
-            'level': 'WARNING',
-            'propagate': False
-        },
-        'mainLogger': {
+        '__main__': { 
             'handlers': ['default', 'file'],
-            'level': 'DEBUG',
-            'propagate': False
-        },
-        'fileLogger': {
-            'handlers': ['file'],
-            'level': 'DEBUG',
-            'propagate': False
-        },
-        '__main__': {  # if __name__ == '__main__'
-            'handlers': ['default'],
             'level': 'DEBUG',
             'propagate': False
         },
