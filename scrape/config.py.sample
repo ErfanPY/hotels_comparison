@@ -1,0 +1,6 @@
+class Config:
+    DATABASE_HOST = "localhost"
+    DATABASE_USER = "user"
+    DATABASE_PASSWORD = "pass"
+    DATABASE_PORT = 3306
+    DATABASE_NAME = "databse"
