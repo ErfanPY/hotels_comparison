@@ -25,7 +25,10 @@ city_ids = {
 }
 
 
-def main():
+def main(sleep_time:int, proxy_host:str, proxy_port:int):
+    socks.set_default_proxy(proxy_host, proxy_port)
+    if not proxy_host is None:
+        socket.socket = socks.socksocket
 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
 
