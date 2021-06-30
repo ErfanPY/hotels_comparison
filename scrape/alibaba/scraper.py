@@ -1,9 +1,8 @@
+import logging
 import re
 import socket
-import sys
 import time
 from datetime import datetime
-from os import name
 from urllib.parse import urljoin
 
 import socks
@@ -11,17 +10,22 @@ from scrape.db_util import get_db_connection, insert_select_id
 
 from .network_utils import *
 
-socks.set_default_proxy("host", "port")
-if '-p' in sys.argv:
-    socket.socket = socks.socksocket
+
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = "alibaba/data.db"
 BASE_URL = "https://www.alibaba.ir/hotel/"
-SLEEP_TIME = 3
+START_DAY_OFFSET = 3
+END_DAY_OFFSET = START_DAY_OFFSET + 30 
 
 city_ids = {
+    'tehran': '5be3f68be9a116befc66704b',
     'mashhad': '5be3f68be9a116befc66701b',
-    'shiraz': '5be3f68be9a116befc6669e6'
+    'shiraz': '5be3f68be9a116befc6669e6',
+    'isfahan': '5be3f68be9a116befc6669e5',
+    'tabriz': '5be3f68be9a116befc666b82',
+    'kish': '5be3f68be9a116befc66704b',
 }
 
 
@@ -32,24 +36,30 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
 
-    for day_offset in range(30):
+    for day_offset in range(START_DAY_OFFSET, END_DAY_OFFSET):
         for city_name, city_id in city_ids.items():
 
             session_id, date_from = get_search_session_id(city_id, day_offset)
+            
+            logger.info('scraping city: {} on day: {}'.format(city_name, day_offset))
+
+            if session_id == -1:
+                logger.error("Getting city search failed: city_name:{}".format(city_name))
+                continue
 
             completed = False
             while not completed:
                 hotels_data = get_search_data(session_id)
                 completed = hotels_data['result']['lastChunk']
-                time.sleep(SLEEP_TIME)
+                time.sleep(sleep_time)
 
             for hotel in hotels_data["result"]["result"]:
-                time.sleep(SLEEP_TIME)
+                time.sleep(sleep_time)
 
                 scrape_hotel(city_name, hotel, session_id, date_from, today)
 
 
-def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today:str):
+def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today:str, sleep_time:int):
     """Scrape and save hotel and cals rooms scraper.
 
     Args:
@@ -88,7 +98,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
         hotel_rooms_data = get_hotel_rooms_data(session_id, hotel_site_id)
 
         final_result = hotel_rooms_data['result']['finalResult']
-        time.sleep(SLEEP_TIME)
+        time.sleep(sleep_time)
 
     for room_type in hotel_rooms_data['result']["rooms"]:
 
@@ -110,12 +120,6 @@ def scrape_room(room:dict, hotel_id:int, date_from:str, today:str) -> None:
         None
     """
 
-    print(
-        room['name'],
-        room['name_en'],
-        room['price'],
-        room['boardPrice']
-    )
     with get_db_connection() as conn:
 
         room_id = insert_select_id(
@@ -190,5 +194,6 @@ def get_room_types(room_name:str)-> str:
 
 
 if __name__ == "__main__":
-    main()
-
+    with profile_ctx("/home/erfan/Desktop/myprofile.png"):
+        main()
+    print("Alibaba Done!")

@@ -14,17 +14,21 @@ from scrape.db_util import get_db_connection, insert_select_id
 
 from .network_util import get_content, get_content_make_soup, urlparse
 
-socks.set_default_proxy("host", "port")
-if '-p' in sys.argv:
-    socket.socket = socks.socksocket
-
 logger = logging.getLogger(__name__)
 
 en_cities = {
+    'تهران':
+    'tehran',
     'شیراز':
-        'shiraz',
-        'مشهد':
-        'mashhad'
+    'shiraz',
+    'مشهد':
+    'mashhad',
+    'تبریز':
+    'tabriz',
+    'اصفهان':
+    'isfahan',
+    'کیش':
+    'kish',
 }
 
 
@@ -32,13 +36,17 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
     socks.set_default_proxy(proxy_host, proxy_port)
     if not proxy_host is None:
         socket.socket = socks.socksocket
+
     BASE_URL = 'https://www.snapptrip.com/'
     BASE_CITIES_URL = {
+        'tehran': 'https://www.snapptrip.com/رزرو-هتل/تهران',
+        'mashhad': "https://www.snapptrip.com/رزرو-هتل/مشهد",
         'shiraz': 'https://www.snapptrip.com/رزرو-هتل/شیراز',
-        'mashhad': "https://www.snapptrip.com/رزرو-هتل/مشهد"
+        'isfahan': 'https://www.snapptrip.com/رزرو-هتل/اصفهان',
+        'tabriz': 'https://www.snapptrip.com/رزرو-هتل/تبریز',
+        'kish': 'https://www.snapptrip.com/رزرو-هتل/کیش'
     }
 
-    SLEEP_TIME = 4
 
     city_date_queue = queue.LifoQueue()
 
@@ -51,8 +59,9 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
         logger.info("Fetching hotels : {}".format(to_scrape_url))
 
         soup = get_content_make_soup(to_scrape_url)
-        time.sleep(SLEEP_TIME)
+        time.sleep(sleep_time)
         if soup == -1:
+            logger.error("Getting search page failed: url: {}".format(to_scrape_url))
             continue
 
         hotels = soup.select_one(
@@ -70,10 +79,10 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
             hotel_url = urljoin(BASE_URL, hotel_url)
 
             scrape_hotel(hotel_url, hotel_site_id)
-            time.sleep(SLEEP_TIME)
+            time.sleep(sleep_time)
 
         city_date_queue.task_done()
-        time.sleep(SLEEP_TIME)
+        time.sleep(sleep_time)
 
         next_page_div = soup.select_one('.pagination-next')
         if not next_page_div is None:
@@ -120,6 +129,10 @@ def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
         )
 
     hotel_soup = get_content_make_soup(hotel_url)
+
+    if hotel_soup == -1:
+        logger.error("Getting hotel content failed: url: {}".format(hotel_url))
+        return
 
     scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id,)
 
@@ -189,11 +202,16 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                 },
                 conn=conn
             )
-
-            room_calender = json.loads(get_content(
+            
+            room_calender_content = get_content(
                 "https://www.snapptrip.com/shopping/{}/calendar/{}".format(
-                    hotel_site_id, room_site_id)
-            ))
+                    hotel_site_id, room_site_id))
+
+            if room_calender_content == -1:
+                logger.error("getting hotel room failed, hotel_id: {}".format())
+                return
+
+            room_calender = json.loads(room_calender_content)
 
             for data in room_calender['data']:
                 for day in data['calendar']:
@@ -257,3 +275,4 @@ def get_room_types(room_name: str) -> str:
 
 if __name__ == "__main__":
     main()
+    print("done")
