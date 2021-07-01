@@ -29,6 +29,30 @@ en_cities = {
     'isfahan',
     'کیش':
     'kish',
+    'یزد':
+    'yazd',
+    'قشم':
+    'qeshm',
+    'بندرعباس':
+    'bandarAbbas',
+    'اهواز':
+    'ahvaz',
+    'قزوین':
+    'qazvin',
+    'ساری':
+    'sari',
+    'سرعین':
+    'sarein',
+    'گرگان':
+    'gorgan',
+    'رشت':
+    'rasht',
+    'بوشهر':
+    'bushehr',
+    'کرمان':
+    'kerman',
+    'ارومیه':
+    'urmia',
 }
 
 
@@ -38,19 +62,11 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
         socket.socket = socks.socksocket
 
     BASE_URL = 'https://www.snapptrip.com/'
-    BASE_CITIES_URL = {
-        'tehran': 'https://www.snapptrip.com/رزرو-هتل/تهران',
-        'mashhad': "https://www.snapptrip.com/رزرو-هتل/مشهد",
-        'shiraz': 'https://www.snapptrip.com/رزرو-هتل/شیراز',
-        'isfahan': 'https://www.snapptrip.com/رزرو-هتل/اصفهان',
-        'tabriz': 'https://www.snapptrip.com/رزرو-هتل/تبریز',
-        'kish': 'https://www.snapptrip.com/رزرو-هتل/کیش'
-    }
-
-
+    
     city_date_queue = queue.LifoQueue()
 
-    for city_url in BASE_CITIES_URL.values():
+    for city_name in en_cities.keys():
+        city_url = make_city_url(city_name)
         city_date_url = get_city_dated_url(city_url)
         city_date_queue.put(city_date_url)
 
@@ -95,6 +111,10 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
 
         city_date_queue.put(next_page_url)
 
+
+def make_city_url(city_name):
+    base_url = "https://www.snapptrip.com/رزرو-هتل/{city_name}"
+    return base_url.format(city_name=city_name)
 
 def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
     """Gets and saves hotel then cals scrape_hotel_rooms

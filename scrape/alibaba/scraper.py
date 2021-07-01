@@ -20,12 +20,24 @@ START_DAY_OFFSET = 3
 END_DAY_OFFSET = START_DAY_OFFSET + 30 
 
 city_ids = {
-    'tehran': '5be3f68be9a116befc66704b',
-    'mashhad': '5be3f68be9a116befc66701b',
-    'shiraz': '5be3f68be9a116befc6669e6',
-    'isfahan': '5be3f68be9a116befc6669e5',
-    'tabriz': '5be3f68be9a116befc666b82',
-    'kish': '5be3f68be9a116befc66704b',
+    'tehran':      '5be3f68be9a116befc66704b',
+    'mashhad':     '5be3f68be9a116befc66701b',
+    'shiraz':      '5be3f68be9a116befc6669e6',
+    'isfahan':     '5be3f68be9a116befc6669e5',
+    'tabriz':      '5be3f68be9a116befc666b82',
+    'kish':        '5be3f68be9a116befc66704b',
+    'yazd':        '5be3f692e9a116befc66e439',
+    'qeshm':       '5be3f697e9a116befc674378',
+    'bandarAbbas': '5be3f697e9a116befc674278',
+    'ahvaz':       '5be3f695e9a116befc671b47',
+    'qazvin':      '5d19d47b4a6d0cbd432e481e',
+    'sari':        '5be3f697e9a116befc674035',
+    'sarein':      '5d19d47b4a6d0cbd432e4818',
+    'gorgan':      '5be3f697e9a116befc674686',
+    'rasht':       '5be3f697e9a116befc674279',
+    'bushehr':     '5be3f697e9a116befc67427b',
+    'kerman':      '5be3f68be9a116befc667055',
+    'urmia':       '5d19d4804a6d0cbd432e4a0b',
 }
 
 
@@ -60,7 +72,7 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
 
 
 def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today:str, sleep_time:int):
-    """Scrape and save hotel and cals rooms scraper.
+    """Scrape and save hotel then calls rooms scraper.
 
     Args:
         city_name (str): The english name of search city.
@@ -194,6 +206,5 @@ def get_room_types(room_name:str)-> str:
 
 
 if __name__ == "__main__":
-    with profile_ctx("/home/erfan/Desktop/myprofile.png"):
-        main()
+    main()
     print("Alibaba Done!")
