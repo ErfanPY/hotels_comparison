@@ -16,8 +16,6 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = "alibaba/data.db"
 BASE_URL = "https://www.alibaba.ir/hotel/"
-START_DAY_OFFSET = 3
-END_DAY_OFFSET = START_DAY_OFFSET + 30 
 
 city_ids = {
     'tehran':      '5be3f68be9a116befc66704b',
@@ -41,14 +39,14 @@ city_ids = {
 }
 
 
-def main(sleep_time:int, proxy_host:str, proxy_port:int):
+def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
     socks.set_default_proxy(proxy_host, proxy_port)
     if not proxy_host is None:
         socket.socket = socks.socksocket
 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
 
-    for day_offset in range(START_DAY_OFFSET, END_DAY_OFFSET):
+    for day_offset in range(0, 30):
         for city_name, city_id in city_ids.items():
 
             session_id, date_from = get_search_session_id(city_id, day_offset)
@@ -68,7 +66,7 @@ def main(sleep_time:int, proxy_host:str, proxy_port:int):
             for hotel in hotels_data["result"]["result"]:
                 time.sleep(sleep_time)
 
-                scrape_hotel(city_name, hotel, session_id, date_from, today)
+                scrape_hotel(city_name, hotel, session_id, date_from, today, sleep_time=sleep_time)
 
 
 def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today:str, sleep_time:int):
@@ -115,18 +113,21 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
     for room_type in hotel_rooms_data['result']["rooms"]:
 
         room_type_id = room_type["id"]
+        meal_plan = room_type['mealPlan']
         for room in room_type["rooms"]:
-            scrape_room(room, hotel_id, date_from, today)
+            save_room(room=room, hotel_id=hotel_id, date_from=date_from,
+                today=today, meal_plan=meal_plan)
 
 
-def scrape_room(room:dict, hotel_id:int, date_from:str, today:str) -> None:
-    """Scrape and save room 
+def save_room(room:dict, hotel_id:int, date_from:str, today:str, meal_plan:str) -> None:
+    """Save room data to database
 
     Args:
         room (dict): A dictionry of room data (contains name, name_en, price, boardPrice).
         hotel_id (int): ID of hotel in out database.
         date_from (str): Formated date of search date range start.
         today (str): Frmated date of today for InsertionDate
+        meal_plan (str): One of these (BB/RO)
 
     Returns:
         None
@@ -139,7 +140,8 @@ def scrape_room(room:dict, hotel_id:int, date_from:str, today:str) -> None:
             key_value={
                 'romName': room['name'],
                 "romType": get_room_types(room['name']),
-                'rom_htlID': hotel_id
+                'rom_htlID': hotel_id,
+                'romMealPlan': meal_plan
             },
             id_field='romID',
             identifier_condition={
@@ -206,5 +208,5 @@ def get_room_types(room_name:str)-> str:
 
 
 if __name__ == "__main__":
-    main()
+    main(sleep_time=1)
     print("Alibaba Done!")

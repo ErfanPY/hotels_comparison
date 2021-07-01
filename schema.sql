@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `tblHotels` (
   KEY `htlFaName` (`htlFaName`),
   KEY `htlFrom` (`htlFrom`),
   KEY `htlIdentifier` (`htlUUID`)
-) ENGINE=InnoDB AUTO_INCREMENT=3414 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3422 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Data exporting was unselected.
 
@@ -87,13 +87,14 @@ CREATE TABLE IF NOT EXISTS `tblRooms` (
   `romName` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `romType` char(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'S: Sinbgle, D: Double, T: Triple, Q: Quad, U: Queen, K: King, T: Tween, 2: Double Double, M: Master ',
   `romUUID` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `romAdditives` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`romAdditives`)),
+  `romAdditives` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `romMealPlan` char(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'RO: Room only, BB: Bed with breakfast',
   PRIMARY KEY (`romID`),
   UNIQUE KEY `rom_htlID_romName_romType` (`rom_htlID`,`romName`,`romType`),
   KEY `romUUID` (`romUUID`),
   KEY `FK_tblRooms_tblHotels` (`rom_htlID`),
   CONSTRAINT `FK_tblRooms_tblHotels` FOREIGN KEY (`rom_htlID`) REFERENCES `tblHotels` (`htlID`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19484 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19536 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Data exporting was unselected.
 
@@ -104,6 +105,8 @@ CREATE TABLE IF NOT EXISTS `tblRoomsOpinions` (
   `ropUserName` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   `ropDate` datetime NOT NULL,
   `ropScrapDate` datetime NOT NULL DEFAULT current_timestamp(),
+  `ropStrengths` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ropWeakness` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `ropText` text COLLATE utf8mb4_unicode_ci NOT NULL,
   KEY `FK__tblRooms` (`rop_romID`),
   CONSTRAINT `FK__tblRooms` FOREIGN KEY (`rop_romID`) REFERENCES `tblRooms` (`romID`) ON DELETE CASCADE ON UPDATE CASCADE

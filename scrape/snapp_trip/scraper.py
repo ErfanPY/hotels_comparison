@@ -3,7 +3,6 @@ import logging
 import queue
 import re
 import socket
-import sys
 import time
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
@@ -56,7 +55,7 @@ en_cities = {
 }
 
 
-def main(sleep_time:int, proxy_host:str, proxy_port:int):
+def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
     socks.set_default_proxy(proxy_host, proxy_port)
     if not proxy_host is None:
         socket.socket = socks.socksocket
@@ -116,6 +115,7 @@ def make_city_url(city_name):
     base_url = "https://www.snapptrip.com/رزرو-هتل/{city_name}"
     return base_url.format(city_name=city_name)
 
+
 def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
     """Gets and saves hotel then cals scrape_hotel_rooms
 
@@ -154,7 +154,11 @@ def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
         logger.error("Getting hotel content failed: url: {}".format(hotel_url))
         return
 
-    scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id,)
+    comments_soup = hotel_soup.select('#rating-hotel')[0]
+
+    rooms_name_id = scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id,)
+    
+    add_rooms_comment(comments_soup, rooms_name_id)
 
 
 def get_city_dated_url(city_url: str, day_offset: int = 0) -> str:
@@ -185,7 +189,7 @@ def get_city_dated_url(city_url: str, day_offset: int = 0) -> str:
     return dated_url
 
 
-def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: str) -> None:
+def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: str) -> dict:
     """Iterats on hotel room and save room and date to database.
 
     Args:
@@ -194,26 +198,34 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
         hotel_site_id (str): hote ID on snapptrip site.
 
     Returns:
-        None
+        dict: A mapping from room_name to database room_id
+        example:
+        
+        [['mashhad', 2], ['yazd', 5]]
     """
     rooms_div = hotel_soup.select_one("div.position-relative")
     rooms = rooms_div.select(".room-item")
 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
 
+    rooms_name_id = {}
+
     with get_db_connection() as conn:
 
         for room in rooms:
             room_site_id = room.contents[3].attrs['data-room_id']
             room_name = room.contents[1].attrs['data-roomname']
-            room_name = room_name
+
+            breakfast = room.select_one('.breakfast')
+            meal_plan = 'RO' if 'disabled' in breakfast.attrs['class'] else 'BB'
 
             room_id = insert_select_id(
                 table='tblRooms',
                 key_value={
                     "rom_htlID": hotel_id,
                     "romName": room_name,
-                    "romType": get_room_types(room_name)
+                    "romType": get_room_types(room_name),
+                    'romMealPlan': meal_plan
                 },
                 id_field='romID',
                 identifier_condition={
@@ -229,7 +241,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
 
             if room_calender_content == -1:
                 logger.error("getting hotel room failed, hotel_id: {}".format())
-                return
+                continue
 
             room_calender = json.loads(room_calender_content)
 
@@ -249,6 +261,10 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                         identifier_condition={},
                         conn=conn
                     )
+            
+            rooms_name_id[room_name]= room_id
+    
+    return rooms_name_id
 
 
 def get_room_types(room_name: str) -> str:
@@ -259,6 +275,7 @@ def get_room_types(room_name: str) -> str:
 
     Returns:
         str: room type
+        A one ( or more ) character string, One from these (S/D/T/Q/2)
     """
     
     search_room_name = re.sub('\W+', '', room_name)
@@ -293,6 +310,51 @@ def get_room_types(room_name: str) -> str:
     return " "
 
 
+def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:
+    """Extract comments from html and connect comment with specified room.
+
+    Args:
+        comments_soup (BeautifulSoup): html data of comments section
+        rooms_name_id (dict): A mapping from room_name to database room_id
+            example:
+            
+            [['mashhad', 2], ['yazd', 5]]
+        
+    Returns:
+        None
+    """
+
+    with get_db_connection() as conn:
+    
+        for comment in comments_soup.select('li'):
+            user_name = comment.select_one('.user-name').text.strip()
+            comment_date = comment.select_one('.date-modify > span').attrs['data-registerdate'] # attr date
+            room_name = comment.select_one('.reserve-info__room > span').text.strip()
+
+            comment_text = comment.select_one('.comment-text-wrapper')
+            comment_text = comment_text.text.strip() if not comment_text is None else ""
+
+            strengths_point = comment.select_one('.strengths-point-text > p').text.strip()
+            weakness_point = comment.select_one('.weakness-point-text > p').text.strip()
+
+            room_id = rooms_name_id[room_name]
+
+            insert_select_id(
+                table="tblRoomsOpinions",
+                key_value={
+                    "rop_romID": room_id,
+                    "ropUserName": user_name,
+                    "ropDate": comment_date,
+                    "ropStrengths": strengths_point,
+                    "ropWeakness": weakness_point,
+                    "ropText": comment_text
+                },
+                id_field=None,
+                identifier_condition={},
+                conn=conn
+            )
+
+
 if __name__ == "__main__":
-    main()
+    main(sleep_time=1)
     print("done")

@@ -13,8 +13,11 @@ def get_search_session_id(city_id, offset):
     data = '{"checkIn":"'+start_date+'","checkOut":"'+end_date+'","rooms":[{"adults":[30],"children":[]}],"destination":{"type":"City","id":"'+city_id+'"}}'
 
     url = "https://ws.alibaba.ir/api/v1/hotel/search"
+    try:
+        response = requests.post(url, data=data)
+    except Exception as e:
+        return -1, -1
 
-    response = requests.post(url, data=data)
     response_data = json.loads(response.content)
 
     return response_data["result"]["sessionId"], start_date
