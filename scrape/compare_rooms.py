@@ -31,7 +31,7 @@ def main():
         romUUID_romIDs[romUUID] = past
     
     query = """
-            SELECT romUUID, avlDate, romID, avlBasePrice, avlDiscountPrice, romName, rom_htlID, htlFrom
+            SELECT romUUID, avlDate, romID, avlBasePrice, avlDiscountPrice, romName, rom_htlID, htlFrom, romMealPlan
             FROM tblRooms
             INNER JOIN tblAvailabilityInfo ON romID = avl_romID
             INNER JOIN tblHotels ON htlID = rom_htlID 
@@ -71,6 +71,12 @@ def compare_rooms(room1, room2, conn):
         alrInfo = {
             room1['romID']: room1['avlDiscountPrice'],
             room2['romID']: room2['avlDiscountPrice'],
+        }
+    elif not room1['romMealPlan'] == room2['romMealPlan']:
+        alrType = 'M'
+        alrInfo = {
+            room1['romID']: room1['romMealPlan'],
+            room2['romID']: room2['romMealPlan'],
         }
     else:
         return

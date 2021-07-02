@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `tblAlert` (
   `alrDateTime` datetime DEFAULT current_timestamp(),
   `alrRoomUUID` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `alrOnDate` date DEFAULT NULL,
-  `alrType` char(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'P: Price, D: Discount, R: Reserve',
+  `alrType` char(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'P: Price, D: Discount, R: Reserve, M: MealPlan',
   `alrA_romID` int(11) unsigned NOT NULL,
   `alrS_romID` int(11) unsigned NOT NULL,
   `alrInfo` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
