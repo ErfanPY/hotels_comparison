@@ -36,7 +36,7 @@ args = parser.parse_args()
 if args.alibaba or args.all:
     alibaba_scraper(sleep_time=args.sleep, proxy_host=args.proxy_host, proxy_port=args.proxy_port)
 
-if args.snap or args.all:
+if args.snapp or args.all:
     snapp_trip_scraper(sleep_time=args.sleep, proxy_host=args.proxy_host, proxy_port=args.proxy_port)
 
 if args.compare or args.all:
