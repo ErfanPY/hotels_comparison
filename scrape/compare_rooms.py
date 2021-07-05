@@ -18,7 +18,7 @@ def main():
     """
     
     with get_db_connection() as conn:
-        result = custom(get_romUUIDs_query, conn)
+        result = custom(query_string=get_romUUIDs_query, conn=conn)
 
 
     for row in result:
@@ -31,7 +31,7 @@ def main():
         romUUID_romIDs[romUUID] = past
     
     query = """
-            SELECT romUUID, avlDate, romID, avlBasePrice, avlDiscountPrice, romName, rom_htlID, htlFrom, romMealPlan
+            SELECT romUUID, avlDate, romID, avlBasePrice, avlDiscountPrice, romName, rom_htlID, htlFrom, romOption
             FROM tblRooms
             INNER JOIN tblAvailabilityInfo ON romID = avl_romID
             INNER JOIN tblHotels ON htlID = rom_htlID 
@@ -41,7 +41,7 @@ def main():
 
     with get_db_connection() as conn:
         
-        rows = custom(query, conn)
+        rows = custom(query_string=query, conn=conn)
         
         for i, row in enumerate(rows):
 
@@ -72,11 +72,11 @@ def compare_rooms(room1, room2, conn):
             room1['romID']: room1['avlDiscountPrice'],
             room2['romID']: room2['avlDiscountPrice'],
         }
-    elif not room1['romMealPlan'] == room2['romMealPlan']:
-        alrType = 'M'
+    elif not room1['romOption'] == room2['romOption']:
+        alrType = 'O'
         alrInfo = {
-            room1['romID']: room1['romMealPlan'],
-            room2['romID']: room2['romMealPlan'],
+            room1['romID']: room1['romOption'],
+            room2['romID']: room2['romOption'],
         }
     else:
         return
