@@ -5,10 +5,10 @@ import mysql.connector
 
 def get_db_connection(host=None, user=None, password=None, port=None, database=None):
     cnx = mysql.connector.connect(
-        host     = host     or Config.DATABASE_HOST,
-        user     = user     or Config.DATABASE_USER,
-        password = password or Config.DATABASE_PASSWORD,
-        port     = port     or Config.DATABASE_PORT,
+        host     = host      or Config.DATABASE_HOST,
+        user     = user      or Config.DATABASE_USER,
+        password = password  or Config.DATABASE_PASSWORD,
+        port     = port      or Config.DATABASE_PORT,
         database = database  or Config.DATABASE_NAME
     )
 
@@ -69,10 +69,11 @@ def select(table:str, select_columns:list, and_conditions:dict={}, extra_conditi
     
     return selected_columns
 
-def custom(query_string:str, conn):
+
+def custom(query_string:str, data:list=[], conn=None):
     curs = conn.cursor(buffered=True, dictionary=True)
 
-    curs.execute(query_string)
+    curs.execute(query_string, data)
 
     result = curs.fetchall()
     
