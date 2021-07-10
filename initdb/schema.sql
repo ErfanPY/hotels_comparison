@@ -14,12 +14,10 @@
 
 
 -- Dumping database structure for Alibaba
-DROP DATABASE IF EXISTS `Alibaba`;
 CREATE DATABASE IF NOT EXISTS `Alibaba` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `Alibaba`;
 
 -- Dumping structure for table Alibaba.tblAlert
-DROP TABLE IF EXISTS `tblAlert`;
 CREATE TABLE IF NOT EXISTS `tblAlert` (
   `alrID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `alrDateTime` datetime DEFAULT current_timestamp(),
@@ -45,7 +43,6 @@ CREATE TABLE IF NOT EXISTS `tblAlert` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table Alibaba.tblAvailabilityInfo
-DROP TABLE IF EXISTS `tblAvailabilityInfo`;
 CREATE TABLE IF NOT EXISTS `tblAvailabilityInfo` (
   `avl_romID` int(11) unsigned DEFAULT NULL,
   `avlDate` date DEFAULT NULL,
@@ -59,7 +56,6 @@ CREATE TABLE IF NOT EXISTS `tblAvailabilityInfo` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table Alibaba.tblHotels
-DROP TABLE IF EXISTS `tblHotels`;
 CREATE TABLE IF NOT EXISTS `tblHotels` (
   `htlID` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `htlEnName` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -80,7 +76,6 @@ CREATE TABLE IF NOT EXISTS `tblHotels` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table Alibaba.tblRooms
-DROP TABLE IF EXISTS `tblRooms`;
 CREATE TABLE IF NOT EXISTS `tblRooms` (
   `romID` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `rom_htlID` int(11) unsigned DEFAULT NULL,
@@ -99,7 +94,6 @@ CREATE TABLE IF NOT EXISTS `tblRooms` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table Alibaba.tblRoomsOpinions
-DROP TABLE IF EXISTS `tblRoomsOpinions`;
 CREATE TABLE IF NOT EXISTS `tblRoomsOpinions` (
   `rop_romID` int(10) unsigned NOT NULL,
   `ropUserName` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
@@ -115,7 +109,6 @@ CREATE TABLE IF NOT EXISTS `tblRoomsOpinions` (
 -- Data exporting was unselected.
 
 -- Dumping structure for table Alibaba.tblTokens
-DROP TABLE IF EXISTS `tblTokens`;
 CREATE TABLE IF NOT EXISTS `tblTokens` (
   `tokID` int(11) NOT NULL AUTO_INCREMENT,
   `tokUUID` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

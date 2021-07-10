@@ -1,0 +1,26 @@
+version: '3.7'
+
+services:
+ scrapper:
+  build:
+   context: .
+  env_file:
+   - .env 
+  volumes:
+   - ./:/scrapper
+  depends_on:
+   - mysqldb
+ mysqldb:
+  image: mysql:5.7
+  ports:
+   - 3306:3306
+  env_file:
+   - .env 
+  volumes:
+   - mysql:/var/lib/mysql
+   - mysql_config:/etc/mysql
+   - ./initdb:/docker-entrypoint-initdb.d
+
+volumes:
+  mysql:
+  mysql_config:
