@@ -4,3 +4,4 @@
 __pycache__
 *.log
 scrape/config.py
+.env

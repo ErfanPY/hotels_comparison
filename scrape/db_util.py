@@ -1,15 +1,15 @@
-from scrape.config import Config
+import os
 
 import mysql.connector
 
 
 def get_db_connection(host=None, user=None, password=None, port=None, database=None):
     cnx = mysql.connector.connect(
-        host     = host      or Config.DATABASE_HOST,
-        user     = user      or Config.DATABASE_USER,
-        password = password  or Config.DATABASE_PASSWORD,
-        port     = port      or Config.DATABASE_PORT,
-        database = database  or Config.DATABASE_NAME
+        host     = host      or os.environ.get("MYSQL_HOST"),
+        user     = user      or os.environ.get("MYSQL_USER"),
+        password = password  or os.environ.get("MYSQL_PASSWORD"),
+        # port     = port      or os.environ.get("MYSQL_PORT"),
+        database = database  or os.environ.get("MYSQL_DATABASE")
     )
 
     return cnx
