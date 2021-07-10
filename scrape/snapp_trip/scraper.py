@@ -71,12 +71,12 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
 
     while city_date_queue.qsize() > 0:
         to_scrape_url = city_date_queue.get()
-        logger.info("Fetching hotels : {}".format(to_scrape_url))
+        logger.info("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
 
         soup = get_content_make_soup(to_scrape_url)
         time.sleep(sleep_time)
         if soup == -1:
-            logger.error("Getting search page failed: url: {}".format(to_scrape_url))
+            logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
             continue
 
         hotels = soup.select_one(
@@ -130,7 +130,7 @@ def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
     city = hotel_url.split("/")[4]
     hotel_name = hotel_url.split("/")[5].split("?")[0]
     hotel_name = hotel_name
-    logger.info("Scape Hotel {} - {}".format(city, hotel_name))
+    logger.info("Snapptrip - Scape Hotel {} - {}".format(city, hotel_name))
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
             table='tblHotels',
@@ -151,7 +151,7 @@ def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
     hotel_soup = get_content_make_soup(hotel_url)
 
     if hotel_soup == -1:
-        logger.error("Getting hotel content failed: url: {}".format(hotel_url))
+        logger.error("Snapptrip - Getting hotel content failed: url: {}".format(hotel_url))
         return
 
     comments_soup = hotel_soup.select('#rating-hotel')[0]
@@ -240,7 +240,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                     hotel_site_id, room_site_id))
 
             if room_calender_content == -1:
-                logger.error("getting hotel room failed, hotel_id: {}".format())
+                logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format())
                 continue
 
             room_calender = json.loads(room_calender_content)
@@ -306,6 +306,8 @@ def get_room_types(room_name: str) -> str:
     for type_name, abrv in types_abrv.items():
         if type_name in search_room_name:
             return abrv
+    
+    logger.error("Snapptrip - No abbreviation found for room name: {}".format(room_name))
 
     return " "
 

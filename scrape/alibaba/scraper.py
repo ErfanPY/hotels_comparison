@@ -51,10 +51,10 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
 
             session_id, date_from = get_search_session_id(city_id, day_offset)
             
-            logger.info('scraping city: {} on day: {}'.format(city_name, day_offset))
+            logger.info('Alibab - scraping city: {} on day: {}'.format(city_name, day_offset))
 
             if session_id == -1:
-                logger.error("Getting city search failed: city_name:{}".format(city_name))
+                logger.error("Alibab - Getting city search failed: city_name:{}".format(city_name))
                 continue
 
             completed = False
@@ -175,7 +175,7 @@ def get_room_types(room_name:str)-> str:
         str: room type
     """
 
- 
+    search_room_name = re.sub('\W+', '', room_name)
 
     types_abrv = {
         "یکتخته":
@@ -203,6 +203,8 @@ def get_room_types(room_name:str)-> str:
     for type_name, abrv in types_abrv.items():
         if type_name in search_room_name:
             return abrv
+
+    logger.error("Alibaba - No abbreviation found for room name: {}".format(room_name))
 
     return " "
 
