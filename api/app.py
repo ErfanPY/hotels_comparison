@@ -1,7 +1,45 @@
 
 from flask import Flask, request
-from scrape.db_util import get_db_connection, custom, select
-from scrape.snapp_trip.scraper import en_cities
+from .db_util import get_db_connection, custom, select
+
+en_cities = {
+    'تهران':
+    'tehran',
+    'شیراز':
+    'shiraz',
+    'مشهد':
+    'mashhad',
+    'تبریز':
+    'tabriz',
+    'اصفهان':
+    'isfahan',
+    'کیش':
+    'kish',
+    'یزد':
+    'yazd',
+    'قشم':
+    'qeshm',
+    'بندرعباس':
+    'bandarAbbas',
+    'اهواز':
+    'ahvaz',
+    'قزوین':
+    'qazvin',
+    'ساری':
+    'sari',
+    'سرعین':
+    'sarein',
+    'گرگان':
+    'gorgan',
+    'رشت':
+    'rasht',
+    'بوشهر':
+    'bushehr',
+    'کرمان':
+    'kerman',
+    'ارومیه':
+    'urmia',
+}
 
 cities_UUID_name = {city_UUID: city_name for city_name,
                     city_UUID in en_cities.items()}
@@ -176,8 +214,21 @@ def userOpinion_view():
     return opinions_result, 200
 
 
-def is_token_valid()
-
+def is_token_valid(token):
+    if not token or not type(token) == str:
+        return False
+        
+    with get_db_connection() as conn:
+        token_data = select(
+            table="tblTokens",
+            select_columns=["tokSatatus"],
+            and_conditions={'tokUUID': token},
+            conn=conn
+        )
+    
+    if token_data['tokSatatus'] == "A":
+        return True
+    return False
 
 if __name__ == '__main__':
     app.run(debug=True)
