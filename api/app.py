@@ -1,5 +1,5 @@
 
-from flask import Flask, request
+from flask import Flask, json, request, jsonify
 from .db_util import get_db_connection, custom, select
 
 en_cities = {
@@ -65,14 +65,14 @@ def list_view():
         data = []
 
     elif list_type == "hotels":
-        query = "select htlName, htlCity, htlUUID from tblHotels where htlCity LIKE ? "
+        query = "select htlEnName, htlFaName, htlCity, htlUUID from tblHotels where IFNULL(htlCity, '') LIKE %s "
         data = [city_UUID]
 
     elif list_type == "rooms":
         query = """
-            select romName, htlCity, htlUUID, romUUID from tblRooms
-            INNER JOIN  tblHotels on rom_htlUUID = htlUUID
-            where htlCity LIKE ? AND hotel_UUID LIKE ?
+            select romName, htlCity, htlUUID, htlFaName, romUUID from tblRooms
+            INNER JOIN  tblHotels on rom_htlID = htlID
+            where IFNULL(htlCity, '') LIKE %s AND IFNULL(htlUUID, '') LIKE %s;
         """
         data = [city_UUID, hotel_UUID]
 
@@ -95,7 +95,7 @@ def list_view():
         for hotel in database_result:
             result_data.append(
                 {
-                    "name": hotel["htlName"],
+                    "name": hotel["htlEnName"] or hotel["htlFaName"],
                     "city": hotel['htlCity'],
                     "uid": hotel["htlUUID"]
                 }
@@ -108,25 +108,30 @@ def list_view():
                     "name": room["romName"],
                     "city": room['htlCity'],
                     "hotel": room["htlUUID"],
+                    "hotel_name": room["htlFaName"],
                     "uid": room["romUUID"]
                 }
             )
 
-    return result_data, 200
+    return jsonify(result_data), 200
 
 
 @app.route('/alerts')
 def alerts_view():
     token = request.args.get("token")
-    date_from = request.args.get("DATE_FROM")  # YYYY-MM-DD format
-    date_to = request.args.get("DATE_TO")  # YYYY-MM-DD format
+    date_from = request.args.get("from")  # YYYY-MM-DD format
+    date_to = request.args.get("to")  # YYYY-MM-DD format
     
-    alert_type = request.args.get("TYPE", "%") # reservation/price/options/discount
+    if not token:
+        return "token is required", 400
+    
+
+    alert_type = request.args.get("type", "%") # reservation/price/options/discount
     alert_type_abrv = alert_type[0]
     
-    city_UUID = request.args.get("CITY_UID", "%")
-    hotel_UUID = request.args.get("HOTEL_UID", "%")
-    room_UUID = request.args.get("ROOM_UID", "%")
+    city_UUID = request.args.get("city", "%")
+    hotel_UUID = request.args.get("hotel", "%")
+    room_UUID = request.args.get("room", "%")
 
     type_abrv_to_complete = {
         'R': 'reservation',
@@ -140,14 +145,25 @@ def alerts_view():
     if not token_validity:
         return "Invalid token", 401
 
-    query = """select alrRoomUUID, alrType, alrOnDate, alrA_romID, alS_romID, alrInfo from tblAlert 
-        where alrOnDate between ? and ? 
-        AND alrType LIKE ? AND city_UUID LIKE ? 
-        AND hotel_UUID LIKE ? AND room_UUID LIKE ?
+    query = """
+        SELECT alrRoomUUID, alrType, alrOnDate, alrA_romID, alrS_romID, alrInfo
+        FROM tblAlert 
+        INNER JOIN tblRooms ON romUUID = alrRoomUUID
+        INNER JOIN tblHotels ON rom_htlID = htlID
+        WHERE IFNULL(alrType, '') LIKE %s AND IFNULL(htlCity, '') LIKE %s
+        AND IFNULL(htlUUID, '') LIKE %s AND IFNULL(romUUID, '') LIKE %s;
     """ 
 
-    data = [date_from, date_to, alert_type_abrv, city_UUID, hotel_UUID, room_UUID]
+    data = [alert_type_abrv, city_UUID, hotel_UUID, room_UUID]
 
+    if date_from:
+        query += " AND alrOnDate >= %s"
+        data.append(date_from)
+
+    if date_to:
+        query += " AND alrOnDate <= %s"
+        data.append(date_to)
+        
     if not alert_type in ["reservation", "price", "options", "discount", "%"]:
         return "Invalid type", 400
 
@@ -155,34 +171,36 @@ def alerts_view():
         database_result = custom(query_string=query, data=data, conn=conn)
     
         
-        for alert in database_result:
-            alibaba_room_id = alert['alrA_romID']
-            snapptrip_room_id = alert['alS_romID']
+    for alert in database_result:
+        alibaba_room_id = alert['alrA_romID']
+        snapptrip_room_id = alert['alrS_romID']
 
-            alert_data =  {
-                "uid": alert['alrRoomUUID'],
-                "type": type_abrv_to_complete[alert['alrType']],
-                "date": alert['alrOnDate']
-            }
-            
-            if alert['alrType'] == "R":
-                reserved_room_site = "alibaba" if alert['alrInfo'].keys[0] == snapptrip_room_id else "snapptrip"
-                alert_info = "reserved on " + reserved_room_site
-            else:
-                alibab_info = alert['alrInfo'][alibaba_room_id]
-                snapptrip_info = alert['alrInfo'][snapptrip_room_id]
-                alert_info = {"alibaba": alibab_info, "snapptrip": snapptrip_info}
-
-            alert_data['info'] = alert_info
-            result_data.append(alert_data)
+        alert_data =  {
+            "uid": alert['alrRoomUUID'],
+            "type": type_abrv_to_complete[alert['alrType']],
+            "date": alert['alrOnDate']
+        }
         
-    return result_data, 200
+        alrInfo = json.loads(alert['alrInfo'])
+
+        if alert['alrType'] == "R":
+            reserved_room_site = "alibaba" if snapptrip_room_id in alrInfo.keys() else "snapptrip"
+            alert_info = "reserved on " + reserved_room_site
+        else:
+            alibab_info = alrInfo[str(alibaba_room_id)]
+            snapptrip_info = alrInfo[str(snapptrip_room_id)]
+            alert_info = {"alibaba": alibab_info, "snapptrip": snapptrip_info}
+
+        alert_data['info'] = alert_info
+        result_data.append(alert_data)
+        
+    return jsonify(result_data), 200
 
 
 @app.route('/userOpinion')
 def userOpinion_view():
     token = request.args.get("token")
-    room_UUID = request.args.get("ROOM_UID")
+    room_UUID = request.args.get("room", "%")
 
     opinions_result = []
 
@@ -211,7 +229,7 @@ def userOpinion_view():
             }
         )
 
-    return opinions_result, 200
+    return jsonify(opinions_result), 200
 
 
 def is_token_valid(token):
@@ -226,7 +244,7 @@ def is_token_valid(token):
             conn=conn
         )
     
-    if token_data['tokSatatus'] == "A":
+    if token_data and token_data['tokSatatus'] == "A":
         return True
     return False
 
