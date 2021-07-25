@@ -27,24 +27,6 @@ services:
         - ./:/scrapperd
         - "/etc/timezone:/etc/timezone:ro"
         - "/etc/localtime:/etc/localtime:ro"
-#  scrapper:
-#   build:
-#    context: .
-#   env_file:
-#    - .env 
-#   volumes:
-#    - ./:/scrapper
-#   depends_on:
-#    - mysqldb
-#  scrapper:
-#   build:
-#    context: .
-#   env_file:
-#    - .env 
-#   volumes:
-#    - ./:/scrapper
-#   depends_on:
-#    - mysqldb
  mysqldb:
     image: mysql:5.7
     ports:
