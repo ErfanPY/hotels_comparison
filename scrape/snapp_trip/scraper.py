@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 import socks
 from bs4 import BeautifulSoup
 from scrape.db_util import get_db_connection, insert_select_id
+from scrape.common_utils import get_room_types
 
 from .network_util import get_content, get_content_make_soup, urlparse
 
@@ -63,9 +64,9 @@ else:
     TO_SCRAPE_CITIES = TO_SCRAPE_CITIES.split(',')
 
 def main(sleep_time:int, proxy_file:str=None):
-    socks.set_default_proxy(proxy_host, proxy_port)
-    if not proxy_host is None:
-        socket.socket = socks.socksocket
+    # socks.set_default_proxy(proxy_host, proxy_port)
+    # if not proxy_host is None:
+    #     socket.socket = socks.socksocket
 
     BASE_URL = 'https://www.snapptrip.com/'
     
@@ -88,7 +89,8 @@ def main(sleep_time:int, proxy_file:str=None):
 
         hotels = soup.select_one(
             ".hotels-data").findAll("li", {'data-hotel-id': True})
-
+        
+        hotels_counter = 0
         for hotel in hotels:
             if "ظرفیت تکمیل" in hotel:
                 # log
@@ -102,6 +104,11 @@ def main(sleep_time:int, proxy_file:str=None):
 
             scrape_hotel(hotel_url, hotel_site_id)
             time.sleep(sleep_time)
+            
+            hotels_counter += 1
+
+        logger.error("Snapptrip - City: {} has {} hotels.".format(to_scrape_url, hotels_counter))
+
 
         city_date_queue.task_done()
 
@@ -217,7 +224,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
     rooms_name_id = {}
 
     with get_db_connection() as conn:
-
+        rooms_counter = 0
         for room in rooms:
             room_site_id = room.contents[3].attrs['data-room_id']
             room_name = room.contents[1].attrs['data-roomname']
@@ -269,53 +276,11 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                     )
             
             rooms_name_id[room_name]= room_id
-    
+            rooms_counter += 1
+
+        logger.error("Snapptrip - Hotel: {} has {} rooms.".format(hotel_id, rooms_counter))
+
     return rooms_name_id
-
-
-def get_room_types(room_name: str) -> str:
-    """Gets type of room by searching abbreviation keywoards on room name.
-
-    Args:
-        room_name (str): room name.
-
-    Returns:
-        str: room type
-        A one ( or more ) character string, One from these (S/D/T/Q/2)
-    """
-    
-    search_room_name = re.sub('\W+', '', room_name)
-
-    types_abrv = {
-        "یکتخته":
-        'S',
-        "یکخوابه":
-        'S',
-        "دوتخته":
-        "D",
-        "دوخوابه":
-        "D",
-        "سهتخته":
-        'T',
-        "سهخوابه":
-        'T',
-        'چهارتحته':
-        'Q',
-        'چهارخوابه':
-        'Q',
-        "تویین":
-        "2",
-        "دابل":
-        "D",
-    }
-
-    for type_name, abrv in types_abrv.items():
-        if type_name in search_room_name:
-            return abrv
-    
-    logger.error("Snapptrip - No abbreviation found for room name: {}".format(room_name))
-
-    return " "
 
 
 def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:

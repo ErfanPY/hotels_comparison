@@ -1,5 +1,5 @@
 import logging
-import re
+import os
 import socket
 import time
 from datetime import datetime
@@ -7,14 +7,12 @@ from urllib.parse import urljoin
 
 import socks
 from scrape.db_util import get_db_connection, insert_select_id
+from scrape.common_utils import get_room_types
 
 from .network_utils import *
 
-
-
 logger = logging.getLogger(__name__)
 
-DB_PATH = "alibaba/data.db"
 BASE_URL = "https://www.alibaba.ir/hotel/"
 
 city_ids = {
@@ -38,23 +36,30 @@ city_ids = {
     'urmia':       '5d19d4804a6d0cbd432e4a0b',
 }
 
+TO_SCRAPE_CITIES = os.environ.get("TO_SCRAPE_CITIES", "")
 
-def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
-    socks.set_default_proxy(proxy_host, proxy_port)
-    if not proxy_host is None:
-        socket.socket = socks.socksocket
+if not TO_SCRAPE_CITIES:
+    TO_SCRAPE_CITIES = list(city_ids.keys())
+else:
+    TO_SCRAPE_CITIES = TO_SCRAPE_CITIES.split(',')
+
+def main(sleep_time:int=1, proxy_file:str=None):
+    # socks.set_default_proxy(proxy_host, proxy_port)
+    # if not proxy_host is None:
+    #     socket.socket = socks.socksocket
 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
 
     for day_offset in range(0, 30):
-        for city_name, city_id in city_ids.items():
-
+        hotels_counter = 0
+        for city_name in TO_SCRAPE_CITIES:
+            city_id = city_ids[city_name]
             session_id, date_from = get_search_session_id(city_id, day_offset)
             
-            logger.info('Alibab - scraping city: {} on day: {}'.format(city_name, day_offset))
+            logger.error('Alibab - scraping city: {} on day: {}'.format(city_name, day_offset))
 
             if session_id == -1:
-                logger.error("Alibab - Getting city search failed: city_name:{}".format(city_name))
+                logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
                 continue
 
             completed = False
@@ -67,9 +72,11 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
                 time.sleep(sleep_time)
 
                 scrape_hotel(city_name, hotel, session_id, date_from, today, sleep_time=sleep_time)
+                hotels_counter += 1
+            
+            logger.error("Alibaba - City: {} has {} hotels.".format(city_name, hotels_counter))
 
-
-def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today:str, sleep_time:int):
+def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today:str, sleep_time:int=1):
     """Scrape and save hotel then calls rooms scraper.
 
     Args:
@@ -84,6 +91,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
     """
     hotel_site_id = hotel["id"]
     hotel_url = urljoin(BASE_URL, hotel['link'])
+    rooms_counter = 0
 
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
@@ -117,7 +125,10 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
         for room in room_type["rooms"]:
             save_room(room=room, hotel_id=hotel_id, date_from=date_from,
                 today=today, meal_plan=meal_plan)
+            rooms_counter += 1
 
+    logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['name'], rooms_counter))
+        
 
 def save_room(room:dict, hotel_id:int, date_from:str, today:str, meal_plan:str) -> None:
     """Save room data to database
@@ -163,50 +174,6 @@ def save_room(room:dict, hotel_id:int, date_from:str, today:str, meal_plan:str) 
             identifier_condition={},
             conn=conn
         )
-
-
-def get_room_types(room_name:str)-> str:
-    """Gets type of room by searching abbreviation keywoards on room name.
-
-    Args:
-        room_name (str): room name.
-
-    Returns:
-        str: room type
-    """
-
-    search_room_name = re.sub('\W+', '', room_name)
-
-    types_abrv = {
-        "یکتخته":
-        'S',
-        "دوتخته":
-        "D",
-        "سهتخته":
-        'T',
-        'چهارتحته':
-        'Q',
-        "یکخوابه":
-        'S',
-        "دوخوابه":
-        "D",
-        "سهخوابه":
-        'T',
-        'چهارخوابه':
-        'Q',
-        "تویین":
-        "2",
-        "دابل":
-        "D",
-    }
-
-    for type_name, abrv in types_abrv.items():
-        if type_name in search_room_name:
-            return abrv
-
-    logger.error("Alibaba - No abbreviation found for room name: {}".format(room_name))
-
-    return " "
 
 
 if __name__ == "__main__":
