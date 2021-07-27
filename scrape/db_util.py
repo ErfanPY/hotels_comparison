@@ -1,7 +1,9 @@
 import os
 
 import mysql.connector
+import logging
 
+logger = logging.getLogger(__name__)
 
 def get_db_connection(host=None, user=None, password=None, port=None, database=None):
     cnx = mysql.connector.connect(
@@ -37,37 +39,6 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
         row_id = curs.fetchone()[id_field]
         
         return str(row_id)
-
-
-
-def update(table:str, key_value:dict, condition:str, conn):
-    curs = conn.cursor(buffered=True)
-
-    key_value_string = ', '.update(key+' = ?' for key in key_value.keys())
-
-    query_string = "UPDATE {} SET {} WHERE {}".format(table, key_value_string, condition)
-    
-    res = curs.execute(query_string, list(key_value.values()))
-    
-    conn.commit()
-    return res
-
-
-def select(table:str, select_columns:list, and_conditions:dict={}, extra_conditions:str="", conn=None):
-    curs = conn.cursor(buffered=True, dictionary=True)
-
-    select_columns_string = ', '.join(select_columns)
-    
-    and_string = ' AND '.join(f"{key} like '%{value}%'" for key, value in and_conditions.items())
-    and_string += ' WHERE' if and_string else ''
-    
-    select_id_query = "SELECT {} from {} {} {};".format(select_columns_string, table, and_string, extra_conditions)
-    
-    curs.execute(select_id_query)
-
-    selected_columns = curs.fetchone()
-    
-    return selected_columns
 
 
 def custom(query_string:str, data:list=[], conn=None):

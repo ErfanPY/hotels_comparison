@@ -7,6 +7,8 @@ WORKDIR /scrapper
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
-COPY . .
+COPY ./scrape ./scrape
+COPY ./logs ./logs
+COPY __init__.py __init__.py
 
-CMD [ "python3", "-m" , "scrape.main", "--all"]
+CMD [ "python3", "-m" , "scrape.main"]
