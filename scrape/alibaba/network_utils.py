@@ -1,7 +1,10 @@
 import json
 from datetime import datetime, timedelta
+import logging
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 def get_search_session_id(city_id, offset):
     today_date = datetime.now() + timedelta(days=offset)
@@ -16,6 +19,7 @@ def get_search_session_id(city_id, offset):
     try:
         response = requests.post(url, data=data)
     except Exception as e:
+        logger.error("Alibaba - network error - err:{}".format(e))
         return -1, -1
 
     response_data = json.loads(response.content)
