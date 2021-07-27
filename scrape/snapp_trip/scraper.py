@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import queue
 import re
 import socket
@@ -54,8 +55,14 @@ en_cities = {
     'urmia',
 }
 
+TO_SCRAPE_CITIES = os.environ.get("TO_SCRAPE_CITIES", "")
 
-def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
+if not TO_SCRAPE_CITIES:
+    TO_SCRAPE_CITIES = list(en_cities.keys())
+else:
+    TO_SCRAPE_CITIES = TO_SCRAPE_CITIES.split(',')
+
+def main(sleep_time:int, proxy_file:str=None):
     socks.set_default_proxy(proxy_host, proxy_port)
     if not proxy_host is None:
         socket.socket = socks.socksocket
@@ -64,14 +71,14 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
     
     city_date_queue = queue.LifoQueue()
 
-    for city_name in en_cities.keys():
-        city_url = make_city_url(city_name)
+    for city_name in TO_SCRAPE_CITIES:
+        city_url = make_city_url(city_name.strip())
         city_date_url = get_city_dated_url(city_url)
         city_date_queue.put(city_date_url)
 
     while city_date_queue.qsize() > 0:
         to_scrape_url = city_date_queue.get()
-        logger.info("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
+        logger.error("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
 
         soup = get_content_make_soup(to_scrape_url)
         time.sleep(sleep_time)
@@ -97,16 +104,15 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
             time.sleep(sleep_time)
 
         city_date_queue.task_done()
-        time.sleep(sleep_time)
 
         next_page_div = soup.select_one('.pagination-next')
         if not next_page_div is None:
             next_page_url = next_page_div.select_one('a').get('href')
             if next_page_url is None or next_page_url == "" or next_page_url == "/":
-                return
+                continue
             next_page_url = urljoin(BASE_URL, next_page_url)
         else:
-            return
+            continue
 
         city_date_queue.put(next_page_url)
 
@@ -130,7 +136,7 @@ def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
     city = hotel_url.split("/")[4]
     hotel_name = hotel_url.split("/")[5].split("?")[0]
     hotel_name = hotel_name
-    logger.info("Snapptrip - Scape Hotel {} - {}".format(city, hotel_name))
+    logger.error("Snapptrip - Scape Hotel {} - {}".format(city, hotel_name))
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
             table='tblHotels',
@@ -240,7 +246,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                     hotel_site_id, room_site_id))
 
             if room_calender_content == -1:
-                logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format())
+                logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
                 continue
 
             room_calender = json.loads(room_calender_content)
@@ -329,17 +335,26 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:
     with get_db_connection() as conn:
     
         for comment in comments_soup.select('li'):
-            user_name = comment.select_one('.user-name').text.strip()
+            user_name = comment.select_one('.user-name')
+            user_name = user_name.text.strip() if user_name else "مهمان"
+
             comment_date = comment.select_one('.date-modify > span').attrs['data-registerdate'] # attr date
-            room_name = comment.select_one('.reserve-info__room > span').text.strip()
+            room_name = comment.select_one('.reserve-info__room > span')
+            room_name = room_name.text.strip() if room_name else ""
 
             comment_text = comment.select_one('.comment-text-wrapper')
             comment_text = comment_text.text.strip() if not comment_text is None else ""
 
-            strengths_point = comment.select_one('.strengths-point-text > p').text.strip()
-            weakness_point = comment.select_one('.weakness-point-text > p').text.strip()
+            stren_point = comment.select_one('.strengths-point-text > p')
+            weak_point = comment.select_one('.weakness-point-text > p')
+            
+            stren_point = stren_point.text.strip() if stren_point else ""
+            weak_point = weak_point.text.strip() if weak_point else ""
 
-            room_id = rooms_name_id[room_name]
+            room_id = rooms_name_id.get(room_name)
+            if not room_id:
+                # room_id = 0
+                continue
 
             insert_select_id(
                 table="tblRoomsOpinions",
@@ -347,8 +362,8 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:
                     "rop_romID": room_id,
                     "ropUserName": user_name,
                     "ropDate": comment_date,
-                    "ropStrengths": strengths_point,
-                    "ropWeakness": weakness_point,
+                    "ropStrengths": stren_point,
+                    "ropWeakness": weak_point,
                     "ropText": comment_text
                 },
                 id_field=None,
