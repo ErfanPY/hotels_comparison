@@ -127,7 +127,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
                 today=today, meal_plan=meal_plan)
             rooms_counter += 1
 
-    logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['name'], rooms_counter))
+    # logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['name'], rooms_counter))
         
 
 def save_room(room:dict, hotel_id:int, date_from:str, today:str, meal_plan:str) -> None:

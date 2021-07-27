@@ -278,7 +278,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
             rooms_name_id[room_name]= room_id
             rooms_counter += 1
 
-        logger.error("Snapptrip - Hotel: {} has {} rooms.".format(hotel_id, rooms_counter))
+        # logger.error("Snapptrip - Hotel: {} has {} rooms.".format(hotel_id, rooms_counter))
 
     return rooms_name_id
 
