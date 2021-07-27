@@ -19,7 +19,7 @@ LOGGING_CONFIG = {
             'level': 'ERROR',
             'formatter': 'console_print',
             'class': 'logging.FileHandler',
-            'filename': 'log.log',
+            'filename': 'logs/log.log',
         }
     },
     'loggers': {
