@@ -2,12 +2,13 @@ from .alibaba.scraper import main as alibaba_scraper
 from .snapp_trip.scraper import main as snapp_trip_scraper
 from .compare_rooms import main as comapre_runner
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import os
 
-load_dotenv("../.env")
+env_path = find_dotenv(raise_error_if_not_found=True)
+load_dotenv(dotenv_path=env_path, verbose=True, override=True)
 
-sleep_time = os.environ.get("SCRAPPER_SLEEP_TIME")
+sleep_time = int(os.environ.get("SCRAPPER_SLEEP_TIME", "1"))
 proxy_file = os.environ.get("SCRAPPER_PROXY_FILE")
 
 if os.environ.get("SCRAPE_ALIBABA"):
