@@ -23,6 +23,11 @@ LOGGING_CONFIG = {
         }
     },
     'loggers': {
+        '': {  # root logger
+            'handlers': ['default', 'file'],
+            'level': 'WARNING',
+            'propagate': False
+        },
         '__main__': { 
             'handlers': ['default', 'file'],
             'level': 'DEBUG',
