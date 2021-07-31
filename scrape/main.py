@@ -5,8 +5,9 @@ from .compare_rooms import main as comapre_runner
 from dotenv import load_dotenv, find_dotenv
 import os
 
-env_path = find_dotenv(raise_error_if_not_found=True)
-load_dotenv(dotenv_path=env_path, verbose=True, override=True)
+# env_path = find_dotenv(raise_error_if_not_found=True)
+# # load_dotenv(dotenv_path=env_path, verbose=True, override=True)
+# load_dotenv(dotenv_path=env_path, verbose=True)
 
 sleep_time = int(os.environ.get("SCRAPPER_SLEEP_TIME", "1"))
 proxy_file = os.environ.get("SCRAPPER_PROXY_FILE")
