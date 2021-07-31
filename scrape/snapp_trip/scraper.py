@@ -56,58 +56,82 @@ def main(sleep_time:int, proxy_file:str=None):
 
     BASE_URL = 'https://www.snapptrip.com/'
     
-    city_date_queue = queue.LifoQueue()
 
-    for city_name in TO_SCRAPE_CITIES:
+    for city_name in to_scrape_cities:
         city_url = make_city_url(city_name.strip())
-        city_date_url = get_city_dated_url(city_url)
-        city_date_queue.put(city_date_url)
-
-    while city_date_queue.qsize() > 0:
-        to_scrape_url = city_date_queue.get()
-        logger.error("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
-
-        soup = get_content_make_soup(to_scrape_url)
-        time.sleep(sleep_time)
-        if soup == -1:
-            logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
-            continue
-
-        hotels = soup.select_one(
-            ".hotels-data").findAll("li", {'data-hotel-id': True})
+        to_scrape_url = get_city_dated_url(city_url)
         
-        hotels_counter = 0
-        for hotel in hotels:
-            if "ظرفیت تکمیل" in hotel:
-                # log
-                break
+        has_next_page = True
+        total_hotels_counter = 0
+        available_hotels_counter = 0
+        page_no = 1
 
-            hotel_site_id = hotel.contents[3].attrs['data-id']
+        while has_next_page:
 
-            hotel_url = hotel.select_one(
-                '#resultpage-hotelcard-cta').get('href')
-            hotel_url = urljoin(BASE_URL, hotel_url)
+            logger.error("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
 
-            scrape_hotel(hotel_url, hotel_site_id)
+            search_page_soup = get_content_make_soup(to_scrape_url)
             time.sleep(sleep_time)
-            
-            hotels_counter += 1
-
-        logger.error("Snapptrip - City: {} has {} hotels.".format(to_scrape_url, hotels_counter))
-
-
-        city_date_queue.task_done()
-
-        next_page_div = soup.select_one('.pagination-next')
-        if not next_page_div is None:
-            next_page_url = next_page_div.select_one('a').get('href')
-            if next_page_url is None or next_page_url == "" or next_page_url == "/":
+            if search_page_soup == -1:
+                logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
                 continue
-            next_page_url = urljoin(BASE_URL, next_page_url)
-        else:
-            continue
 
-        city_date_queue.put(next_page_url)
+            hotels = search_page_soup.select_one(".hotels-data").findAll("li", {'data-hotel-id': True})
+            
+            total_hotels_counter += len(hotels)
+            
+            for hotel in hotels:
+                if "ظرفیت تکمیل" in hotel.text or hotel.select_one(".badge-fill-danger"):
+                    has_next_page = False
+                    logger.error("Snapptrip - City: {} FINISHED(No more room available). total {} and {} available hotels in {} page.".format(
+                        city_name,
+                        total_hotels_counter,
+                        available_hotels_counter,
+                        page_no
+                    ))
+                    break
+
+                hotel_site_id = hotel.contents[3].attrs['data-id']
+
+                hotel_url = hotel.select_one(
+                    '#resultpage-hotelcard-cta').get('href')
+                hotel_url = urljoin(BASE_URL, hotel_url)
+
+                try:
+                    scrape_hotel(hotel_url, hotel_site_id, city_name)
+                    
+                    time.sleep(sleep_time)
+                
+                    available_hotels_counter += 1
+
+                except Exception as e:
+                    logger.error("Snapptrip - FAILED on City: {} hotel: {}, error: {}".format(
+                        city_name,
+                        hotel_url,
+                        e
+                    ))
+
+            logger.error("Snapptrip - City: {} has total {} and {} available hotels in {} page.".format(
+                city_name,
+                total_hotels_counter,
+                available_hotels_counter,
+                page_no
+            ))
+
+            next_page_div = search_page_soup.select_one('.pagination-next')
+            if not next_page_div is None:
+                next_page_url = next_page_div.select_one('a').get('href')
+                if next_page_url is None or next_page_url == "" or next_page_url == "/":
+                    has_next_page = False
+                    logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format())
+                    continue
+
+                to_scrape_url = urljoin(BASE_URL, next_page_url)
+                page_no += 1
+            else:
+                has_next_page = False
+                logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format())
+                continue
 
 
 def make_city_url(city_name):
@@ -115,28 +139,29 @@ def make_city_url(city_name):
     return base_url.format(city_name=city_name)
 
 
-def scrape_hotel(hotel_url: str, hotel_site_id: str) -> None:
+def scrape_hotel(hotel_url: str, hotel_site_id: str, city_name: str) -> None:
     """Gets and saves hotel then cals scrape_hotel_rooms
 
     Args:
         hotel_url (str): A url points to the hotel page.
         hotel_site_id (str): ID of hotel on snapptrip site.
+        city_name (str): City name.
 
     Returns:
         None
     """
 
-    city = hotel_url.split("/")[4]
     hotel_name = hotel_url.split("/")[5].split("?")[0]
-    hotel_name = hotel_name
-    logger.error("Snapptrip - Scape Hotel {} - {}".format(city, hotel_name))
+
+    logger.error("Snapptrip - Scape Hotel {} - {}".format(city_name, hotel_name))
+
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
             table='tblHotels',
             key_value={
                 "htlFaName": hotel_name,
                 "htlEnName": "",
-                "htlCity": en_cities[city],
+                "htlCity": fa_en_cities[city_name],
                 "htlUrl": hotel_url,
                 "htlFrom": 'S'
             },
