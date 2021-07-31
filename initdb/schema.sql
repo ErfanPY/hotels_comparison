@@ -79,8 +79,8 @@ CREATE TABLE IF NOT EXISTS `tblHotels` (
 CREATE TABLE IF NOT EXISTS `tblRooms` (
   `romID` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `rom_htlID` int(11) unsigned DEFAULT NULL,
-  `romName` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `romType` char(1) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'S: Sinbgle, D: Double, T: Triple, Q: Quad, U: Queen, K: King, T: Tween, 2: Double Double, M: Master ',
+  `romName` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `romType` char(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'S: Sinbgle, D: Double, T: Triple, Q: Quad, U: Queen, K: King, T: Tween, 2: Double Double, M: Master ',
   `romUUID` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `romAdditives` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
   `romMealPlan` char(3) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'RO: Room only, BB: Bed with breakfast',
