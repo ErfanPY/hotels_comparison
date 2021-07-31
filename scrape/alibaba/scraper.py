@@ -70,8 +70,11 @@ def main(sleep_time:int=1, proxy_file:str=None):
 
             for hotel in hotels_data["result"]["result"]:
                 time.sleep(sleep_time)
+                try:
+                    scrape_hotel(city_name, hotel, session_id, date_from, today, sleep_time=sleep_time)
+                except Exception as e:
+                    logger.error("Alibaba - FAILED on City: {} hotel {} with error: {}".format(city_name, hotel['name'].get('fa'), e))
 
-                scrape_hotel(city_name, hotel, session_id, date_from, today, sleep_time=sleep_time)
                 hotels_counter += 1
             
             logger.error("Alibaba - City: {} has {} hotels.".format(city_name, hotels_counter))
