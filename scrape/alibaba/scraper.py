@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://www.alibaba.ir/hotel/"
 
 city_ids = {
-    'tehran':      '5be3f68be9a116befc66704b',
+    'tehran':      '5be3f68be9a116befc6669e7',
     'mashhad':     '5be3f68be9a116befc66701b',
     'shiraz':      '5be3f68be9a116befc6669e6',
     'isfahan':     '5be3f68be9a116befc6669e5',
@@ -63,12 +63,17 @@ def main(sleep_time:int=1, proxy_file:str=None):
                 continue
 
             completed = False
+            hotels_data_results = []
             while not completed:
                 hotels_data = get_search_data(session_id)
+                hotels_data_results.extend(hotels_data['result']['result'])
                 completed = hotels_data['result']['lastChunk']
                 time.sleep(sleep_time)
 
-            for hotel in hotels_data["result"]["result"]:
+            # Make hotels_data unique
+            hotels_data_results = list({v['id']:v for v in hotels_data_results}.values()) 
+
+            for hotel in hotels_data_results:
                 time.sleep(sleep_time)
                 try:
                     scrape_hotel(city_name, hotel, session_id, date_from, today, sleep_time=sleep_time)
@@ -130,7 +135,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
                 today=today, meal_plan=meal_plan)
             rooms_counter += 1
 
-    # logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['name'], rooms_counter))
+    logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['name'], rooms_counter))
         
 
 def save_room(room:dict, hotel_id:int, date_from:str, today:str, meal_plan:str) -> None:
