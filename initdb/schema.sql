@@ -44,11 +44,12 @@ CREATE TABLE IF NOT EXISTS `tblAlert` (
 
 -- Dumping structure for table Alibaba.tblAvailabilityInfo
 CREATE TABLE IF NOT EXISTS `tblAvailabilityInfo` (
-  `avl_romID` int(11) unsigned DEFAULT NULL,
-  `avlDate` date DEFAULT NULL,
-  `avlInsertionDate` date DEFAULT NULL,
-  `avlBasePrice` int(10) unsigned NOT NULL DEFAULT 0,
-  `avlDiscountPrice` int(10) unsigned NOT NULL DEFAULT 0,
+  `avl_romID` int(11) unsigned NOT NULL,
+  `avlDate` date NOT NULL,
+  `avlInsertionDate` date NOT NULL,
+  `avlBasePrice` int(10) unsigned NOT NULL DEFAULT '0',
+  `avlDiscountPrice` int(10) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`avl_romID`,`avlDate`,`avlInsertionDate`),
   UNIQUE KEY `avl_romID_avlDate_avlInsertionDate` (`avl_romID`,`avlDate`,`avlInsertionDate`),
   CONSTRAINT `FK_tblAvailabilityInfo_tblRooms` FOREIGN KEY (`avl_romID`) REFERENCES `tblRooms` (`romid`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
