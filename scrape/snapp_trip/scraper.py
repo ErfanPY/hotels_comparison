@@ -17,51 +17,37 @@ from .network_util import get_content, get_content_make_soup, urlparse
 
 logger = logging.getLogger(__name__)
 
-en_cities = {
-    'تهران':
-    'tehran',
-    'شیراز':
-    'shiraz',
-    'مشهد':
-    'mashhad',
-    'تبریز':
-    'tabriz',
-    'اصفهان':
-    'isfahan',
-    'کیش':
-    'kish',
-    'یزد':
-    'yazd',
-    'قشم':
-    'qeshm',
-    'بندرعباس':
-    'bandarAbbas',
-    'اهواز':
-    'ahvaz',
-    'قزوین':
-    'qazvin',
-    'ساری':
-    'sari',
-    'سرعین':
-    'sarein',
-    'گرگان':
-    'gorgan',
-    'رشت':
-    'rasht',
-    'بوشهر':
-    'bushehr',
-    'کرمان':
-    'kerman',
-    'ارومیه':
-    'urmia',
+fa_en_cities = {
+    'تهران': 'tehran',
+    'شیراز': 'shiraz',
+    'مشهد': 'mashhad',
+    'تبریز': 'tabriz',
+    'اصفهان': 'isfahan',
+    'کیش': 'kish',
+    'یزد': 'yazd',
+    'قشم': 'qeshm',
+    'بندرعباس': 'bandarAbbas',
+    'اهواز': 'ahvaz',
+    'قزوین': 'qazvin',
+    'ساری': 'sari',
+    'سرعین': 'sarein',
+    'گرگان': 'gorgan',
+    'رشت': 'rasht',
+    'بوشهر': 'bushehr',
+    'کرمان': 'kerman',
+    'ارومیه': 'urmia',
 }
 
-TO_SCRAPE_CITIES = os.environ.get("TO_SCRAPE_CITIES", "")
+en_fa_cities = {v:k for k, v in fa_en_cities.items()}
 
-if not TO_SCRAPE_CITIES:
-    TO_SCRAPE_CITIES = list(en_cities.keys())
+to_scrape_cities_inp = os.environ.get("TO_SCRAPE_CITIES", "")
+
+if not to_scrape_cities_inp:
+    to_scrape_cities = list(fa_en_cities.keys())
 else:
-    TO_SCRAPE_CITIES = TO_SCRAPE_CITIES.split(',')
+    en_to_scrape_cities = to_scrape_cities_inp.split(',')
+    to_scrape_cities = [en_fa_cities[city] for city in en_to_scrape_cities]
+
 
 def main(sleep_time:int, proxy_file:str=None):
     # socks.set_default_proxy(proxy_host, proxy_port)
