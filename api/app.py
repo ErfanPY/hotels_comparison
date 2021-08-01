@@ -3,42 +3,24 @@ from flask import Flask, json, request, jsonify
 from .db_util import get_db_connection, custom, select
 
 en_cities = {
-    'تهران':
-    'tehran',
-    'شیراز':
-    'shiraz',
-    'مشهد':
-    'mashhad',
-    'تبریز':
-    'tabriz',
-    'اصفهان':
-    'isfahan',
-    'کیش':
-    'kish',
-    'یزد':
-    'yazd',
-    'قشم':
-    'qeshm',
-    'بندرعباس':
-    'bandarAbbas',
-    'اهواز':
-    'ahvaz',
-    'قزوین':
-    'qazvin',
-    'ساری':
-    'sari',
-    'سرعین':
-    'sarein',
-    'گرگان':
-    'gorgan',
-    'رشت':
-    'rasht',
-    'بوشهر':
-    'bushehr',
-    'کرمان':
-    'kerman',
-    'ارومیه':
-    'urmia',
+    'تهران': 'tehran',
+    'شیراز': 'shiraz',
+    'مشهد': 'mashhad',
+    'تبریز': 'tabriz',
+    'اصفهان': 'isfahan',
+    'کیش': 'kish',
+    'یزد': 'yazd',
+    'قشم': 'qeshm',
+    'بندر-عباس': 'bandarAbbas',
+    'اهواز': 'ahvaz',
+    'قزوین': 'qazvin',
+    'ساری': 'sari',
+    'سرعین': 'sarein',
+    'گرگان': 'gorgan',
+    'رشت': 'rasht',
+    'بوشهر': 'bushehr',
+    'کرمان': 'kerman',
+    'ارومیه': 'urmia',
 }
 
 cities_UUID_name = {city_UUID: city_name for city_name,
