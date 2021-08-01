@@ -4,32 +4,41 @@ LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,
     'formatters': {
-        'console_print': {
+        'default_fromatter': {
             'format': '[%(levelname)s] %(asctime)s -- %(message)s'
         },
     },
     'handlers': {
         'default': {
             'level': 'DEBUG',
-            'formatter': 'console_print',
+            'formatter': 'default_fromatter',
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',  
         },
         'file': {
             'level': 'ERROR',
-            'formatter': 'console_print',
+            'formatter': 'default_fromatter',
             'class': 'logging.FileHandler',
-            'filename': 'logs/log.log',
+            'filename': 'log.log',
+        },
+        'rotatingFile': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'level': 'ERROR',
+            'formatter': 'default_fromatter',
+            'filename': 'error.log',
+            'mode': 'a',
+            'maxBytes': 10485760,
+            'backupCount': 5,
         }
     },
     'loggers': {
         '': {  # root logger
-            'handlers': ['default', 'file'],
+            'handlers': ['default', 'rotatingFile'],
             'level': 'WARNING',
             'propagate': False
         },
         '__main__': { 
-            'handlers': ['default', 'file'],
+            'handlers': ['default', 'rotatingFile'],
             'level': 'DEBUG',
             'propagate': False
         },
