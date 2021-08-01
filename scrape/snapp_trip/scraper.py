@@ -26,21 +26,21 @@ fa_en_cities = {
     'کیش': 'kish',
     'یزد': 'yazd',
     'قشم': 'qeshm',
-    'بندرعباس': 'bandarAbbas',
+    'بندر-عباس': 'bandarAbbas',
     'اهواز': 'ahvaz',
     'قزوین': 'qazvin',
     'ساری': 'sari',
     'سرعین': 'sarein',
     'گرگان': 'gorgan',
     'رشت': 'rasht',
-    'بوشهر': 'bushehr',
+    'بندر-بوشهر': 'bushehr',
     'کرمان': 'kerman',
     'ارومیه': 'urmia',
 }
 
 en_fa_cities = {v:k for k, v in fa_en_cities.items()}
 
-to_scrape_cities_inp = os.environ.get("TO_SCRAPE_CITIES", "")
+to_scrape_cities_inp = os.environ.get("SNAPPTRIP_TO_SCRAPE_CITIES", "")
 
 if not to_scrape_cities_inp:
     to_scrape_cities = list(fa_en_cities.keys())
@@ -49,7 +49,7 @@ else:
     to_scrape_cities = [en_fa_cities[city] for city in en_to_scrape_cities]
 
 
-def main(sleep_time:int, proxy_file:str=None):
+def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
     # socks.set_default_proxy(proxy_host, proxy_port)
     # if not proxy_host is None:
     #     socket.socket = socks.socksocket
@@ -123,14 +123,24 @@ def main(sleep_time:int, proxy_file:str=None):
                 next_page_url = next_page_div.select_one('a').get('href')
                 if next_page_url is None or next_page_url == "" or next_page_url == "/":
                     has_next_page = False
-                    logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format())
+                    logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format(
+                        city_name,
+                        total_hotels_counter,
+                        available_hotels_counter,
+                        page_no
+                    ))
                     continue
 
                 to_scrape_url = urljoin(BASE_URL, next_page_url)
                 page_no += 1
             else:
                 has_next_page = False
-                logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format())
+                logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format(
+                    city_name,
+                    total_hotels_counter,
+                    available_hotels_counter,
+                    page_no
+                ))
                 continue
 
 
