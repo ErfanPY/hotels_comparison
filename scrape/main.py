@@ -9,14 +9,21 @@ import os
 # # load_dotenv(dotenv_path=env_path, verbose=True, override=True)
 # load_dotenv(dotenv_path=env_path, verbose=True)
 
-sleep_time = int(os.environ.get("SCRAPPER_SLEEP_TIME", "1"))
-proxy_file = os.environ.get("SCRAPPER_PROXY_FILE")
+proxy_host = os.environ.get("SCRAPPER_PROXY_HOST")
+proxy_port = os.environ.get("SCRAPPER_PROXY_PORT")
 
-if os.environ.get("SCRAPE_ALIBABA"):
-    alibaba_scraper(sleep_time=sleep_time, proxy_file=proxy_file)
+if os.environ.get("SCRAPE_ALIBABA") == "1":
+    sleep_time = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME"))
+    alibaba_scraper(sleep_time=sleep_time, proxy_host=proxy_host, proxy_port=proxy_port)
 
-if os.environ.get("SCRAPE_SNAPPTRIP"):
-    snapp_trip_scraper(sleep_time=sleep_time, proxy_file=proxy_file)
+if os.environ.get("SCRAPE_SNAPPTRIP") == "1":
+    sleep_time = int(os.environ.get("SNAPPTRIP_SCRAPPER_SLEEP_TIME"))
+    snapp_trip_scraper(sleep_time=sleep_time, proxy_host=proxy_host, proxy_port=proxy_port)
 
-if os.environ.get("COMPARE_SCRAPES"):
+if os.environ.get("COMPARE_SCRAPES") == "1":
     comapre_runner()
+
+if os.environ.get("FIX_ABRV") == "1":
+    comapre_runner()
+
+print("NO env variable")
