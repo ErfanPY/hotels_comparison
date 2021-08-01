@@ -8,7 +8,6 @@ COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
 COPY ./scrape ./scrape
-COPY ./logs ./logs
 COPY __init__.py __init__.py
 COPY .env .env
 
