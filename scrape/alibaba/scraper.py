@@ -36,14 +36,14 @@ city_ids = {
     'urmia':       '5d19d4804a6d0cbd432e4a0b',
 }
 
-TO_SCRAPE_CITIES = os.environ.get("TO_SCRAPE_CITIES", "")
+TO_SCRAPE_CITIES = os.environ.get("ALIBABA_TO_SCRAPE_CITIES", "")
 
 if not TO_SCRAPE_CITIES:
     TO_SCRAPE_CITIES = list(city_ids.keys())
 else:
-    TO_SCRAPE_CITIES = TO_SCRAPE_CITIES.split(',')
+    TO_SCRAPE_CITIES = [city.strip() for city in TO_SCRAPE_CITIES.split(',') if city.strip()]
 
-def main(sleep_time:int=1, proxy_file:str=None):
+def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
     # socks.set_default_proxy(proxy_host, proxy_port)
     # if not proxy_host is None:
     #     socket.socket = socks.socksocket
@@ -51,8 +51,8 @@ def main(sleep_time:int=1, proxy_file:str=None):
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
 
     for day_offset in range(0, 30):
-        hotels_counter = 0
         for city_name in TO_SCRAPE_CITIES:
+            hotels_counter = 0
             city_id = city_ids[city_name]
             session_id, date_from = get_search_session_id(city_id, day_offset)
             
