@@ -4,29 +4,35 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_room_types(room_name:str)-> str:
-    """Gets type of room by searching abbreviation keywoards on room name.
-
-    Args:
-        room_name (str): room name.
-
-    Returns:
-        str: room type
-    """
-
-    search_room_name = re.sub('\W+', '', room_name)
-
-    types_abrv = [
+types_abrv = [
+        ['سوییت', 'SU'],
+        ['سوئیت', 'SU'],
+        ['کانکت', 'C'],
+        ['جونیور', 'JU'],
+        ['دوبلکس', 'DU'],
+        ['امپریال', 'AM'],
+        ['کویین', 'QU'],
+        ['VIP', 'VIP'],
+        ['سوپریور', 'SUP'],
+        ['لوکس', 'LU'],
+        ['رویال', 'RO'],
+        ['کیدز', 'KI'],
+        ['ملل', 'IN'],
+        ['پرزیدنت', 'PR'],
+        ['پرنسس', 'PRA'],
+        ['پردیس', 'PAR'],
+        ['عروسوداماد', 'B&G'],
+        
+        ["تویین", "2"],
+        ['دبل', 'D'],
+        ["دابل", "D"],
+        ['تریپل', 'T'],
+        ['سینگل', 'S'],
         ["یک", 'S'],
         ["دو", "D"],
         ["سه", 'T'],
         ['چهار', 'Q'],
-        ['سوییت', 'SU'],
-        ['جونیور', 'JU'],
-        ['دوبلکس', 'DU'],
-        ["تویین", "2"],
-        ['دبل', 'D'],
-        ["دابل", "D"],
+
         ['پنج', '5'],
         ['شش', '6'],
         ['هفت', '7'],
@@ -35,6 +41,11 @@ def get_room_types(room_name:str)-> str:
         ['ده', '10'],
         ['یازده', '11'],
         ['دوازده', '12'],
+
+        ['2', '2'],
+        ['3', '3'],
+        ['4', '4'],
+        ['5', '5'],
     ]
 
     for type_name, abrv in types_abrv:
