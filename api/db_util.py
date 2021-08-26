@@ -33,6 +33,23 @@ def select(table:str, select_columns:list, and_conditions:dict={}, extra_conditi
     return selected_columns
 
 
+def select_all(table:str, select_columns:list, and_conditions:dict={}, extra_conditions:str="", conn=None):
+    curs = conn.cursor(buffered=True, dictionary=True)
+
+    select_columns_string = ', '.join(select_columns)
+    
+    and_string = ' WHERE ' if and_conditions.values() else ''
+    and_string += ' AND '.join(f"{key} like '%{value}%'" for key, value in and_conditions.items() if value)
+    
+    select_id_query = "SELECT {} from {} {} {};".format(select_columns_string, table, and_string, extra_conditions)
+    
+    curs.execute(select_id_query)
+
+    selected_columns = curs.fetchall()
+    
+    return selected_columns
+
+
 def custom(query_string:str, data:list=[], conn=None):
     curs = conn.cursor(buffered=True, dictionary=True)
 
