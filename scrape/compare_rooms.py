@@ -1,14 +1,15 @@
 import json
 from scrape.db_util import custom, get_db_connection, insert_select_id
+from scrape.common_utils import mgroupby
 
-rows = []
+rooms_data = []
 romUUID_romIDs = {}
 
 def main():
-    global rows
+    global rooms_data
     global romUUID_romIDs
 
-    rowIdentifier_rowIndex = {}
+    single_rooms = []
     
     get_romUUIDs_query = """
     SELECT htlFrom, romID, romUUID 
@@ -21,17 +22,18 @@ def main():
         result = custom(query_string=get_romUUIDs_query, conn=conn)
 
 
-    for row in result:
-        htlFrom = row['htlFrom']
-        romID = row['romID']
-        romUUID = row['romUUID']
+    for room in result:
+        htlFrom = room['htlFrom']
+        romID = room['romID']
+        romUUID = room['romUUID']
 
         past = romUUID_romIDs.get(romUUID, {})
         past[htlFrom] = romID
         romUUID_romIDs[romUUID] = past
     
-    query = """
-            SELECT romUUID, avlDate, romID, avlBasePrice, avlDiscountPrice, romName, rom_htlID, htlFrom, romOption
+    rooms_data_query = """
+            SELECT romUUID, avlInsertionDate, avlDate, romID, avlBasePrice,
+                avlDiscountPrice, romName, rom_htlID, htlFrom, romMealPlan
             FROM tblRooms
             INNER JOIN tblAvailabilityInfo ON romID = avl_romID
             INNER JOIN tblHotels ON htlID = rom_htlID 
@@ -40,65 +42,79 @@ def main():
         """
 
     with get_db_connection() as conn:
-        
-        rows = custom(query_string=query, conn=conn)
-        
-        for i, row in enumerate(rows):
+        rooms_data = custom(query_string=rooms_data_query, conn=conn)
 
-            rowIdentifier = '|'.join([row['romUUID'] or ' ', str(row['avlDate'])])
-            other_room_index = rowIdentifier_rowIndex.get(rowIdentifier)
-            
-            if other_room_index is None or row['romUUID'] is None:
-                rowIdentifier_rowIndex[rowIdentifier] = i
-                continue
-            
-            del rowIdentifier_rowIndex[rowIdentifier]
-
-            compare_rooms(row, rows[other_room_index], conn)
+    rom_identifier_groups = mgroupby(
+        rooms_data,
+        lambda room:"{}_{}".format(room['romID'], room['avlDate']),
+        sort_key=lambda room:room['avlInsertionDate'], reverse=True
+    )
+   
+    last_inserted_rooms = {k:v[0] for k, v in rom_identifier_groups.items()}
     
-        add_single_available_rooms(rowIdentifier_rowIndex, conn)
+    room_UUID_groups = mgroupby(
+        last_inserted_rooms.values(),
+        lambda room:room['romUUID']
+    )
+
+    with get_db_connection() as conn:
+
+        for roomUUID, rooms_group in room_UUID_groups.items():
+            htlFrom_groups = mgroupby(
+                rooms_group,
+                lambda room:room['htlFrom'],
+                sort_key=lambda room:room['romMealPlan']
+            )
+          
+            if len(htlFrom_groups.keys()) == 1:
+                single_room = list(htlFrom_groups.values())[0][0]
+                single_rooms.append(single_room)
+            elif len(htlFrom_groups.keys()) == 2:
+                compare_rooms(alibaba_room=htlFrom_groups['A'][0], snapptrip_room=htlFrom_groups['S'][0], conn=conn)
+            else:
+                print("Non handled condition, {}".format(str(htlFrom_groups)))
+          
+        add_single_available_rooms(single_rooms, conn)
 
 
-def compare_rooms(room1, room2, conn):      
-    if not room1['avlBasePrice'] == room2['avlBasePrice']:
+def compare_rooms(alibaba_room, snapptrip_room, conn):
+    if not alibaba_room['avlBasePrice'] == snapptrip_room['avlBasePrice']:
         alrType = 'P'
         alrInfo = {
-            room1['romID']: room1['avlBasePrice'],
-            room2['romID']: room2['avlBasePrice'],
+            alibaba_room['romID']: alibaba_room['avlBasePrice'],
+            snapptrip_room['romID']: snapptrip_room['avlBasePrice'],
         }
-    elif not room1['avlDiscountPrice'] == room2['avlDiscountPrice']:
+    elif not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
         alrType = 'D'
         alrInfo = {
-            room1['romID']: room1['avlDiscountPrice'],
-            room2['romID']: room2['avlDiscountPrice'],
+            alibaba_room['romID']: alibaba_room['avlDiscountPrice'],
+            snapptrip_room['romID']: snapptrip_room['avlDiscountPrice'],
         }
-    elif not room1['romOption'] == room2['romOption']:
+    elif not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
         alrType = 'O'
         alrInfo = {
-            room1['romID']: room1['romOption'],
-            room2['romID']: room2['romOption'],
+            alibaba_room['romID']: alibaba_room['romMealPlan'],
+            snapptrip_room['romID']: snapptrip_room['romMealPlan'],
         }
     else:
         return
     
-    romUUID = room1['romUUID']
+    romUUID = alibaba_room['romUUID']
 
-    alrA_romID = romUUID_romIDs[romUUID]['A']
-    alrS_romID = romUUID_romIDs[romUUID]['S']
 
     insert_select_id(table='tblAlert', key_value={
         "alrRoomUUID": romUUID, 
-        "alrOnDate": room1['avlDate'],
+        "alrOnDate": alibaba_room['avlDate'],
         "alrType": alrType,
-        "alrA_romID": alrA_romID,
-        "alrS_romID": alrS_romID,
+        "alrA_romID": alibaba_room['romID'],
+        "alrS_romID": snapptrip_room['romID'],
         'alrInfo': json.dumps(alrInfo)
     }, id_field=None, identifier_condition=None, conn=conn)
 
 
-def add_single_available_rooms(rowIdentifier_rowIndex, conn):
-    for rowIdentifier, index in rowIdentifier_rowIndex.items():
-        romUUID, _ = rowIdentifier.split('|')
+def add_single_available_rooms(rooms, conn):
+    for room in rooms:
+        romUUID = room['romUUID']
 
         if romUUID == " ":
             singlity_msg = "No mathcing UUID on other hotel."
@@ -106,15 +122,19 @@ def add_single_available_rooms(rowIdentifier_rowIndex, conn):
             singlity_msg = "Reserved on other hotel in this date."
 
         alrInfo = {
-            rows[index]['romID']: singlity_msg
+            room['romID']: singlity_msg
             }
 
-        alrA_romID = romUUID_romIDs[romUUID]['A']
-        alrS_romID = romUUID_romIDs[romUUID]['S']
+        # TODO
+        try:
+            alrA_romID = romUUID_romIDs[romUUID]['A']
+            alrS_romID = romUUID_romIDs[romUUID]['S']
+        except KeyError:
+            return
 
         insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
-            "alrOnDate": rows[index]['avlDate'],
+            "alrOnDate": room['avlDate'],
             "alrType": 'R',
             "alrA_romID": alrA_romID,
             "alrS_romID": alrS_romID,

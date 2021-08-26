@@ -1,18 +1,19 @@
 import os
 
+import re
 import mysql.connector
 import logging
 from dotenv import load_dotenv, find_dotenv
 
 from scrape.alibaba.scraper import city_ids
-import re
+from scrape.common_utils import mgroupby
 
 logger = logging.getLogger(__name__)
 
 env_path = find_dotenv(raise_error_if_not_found=True)
 load_dotenv(dotenv_path=env_path, verbose=True, override=True)
 
-DO_WARN_NO_RESULT = True
+DO_WARN_NO_RESULT = False
 DO_WARN_MANY_RESULTS = False
 
 def get_db_connection(host=None, user=None, password=None, port=None, database=None):
@@ -36,6 +37,15 @@ def custom(query_string:str, data:list=[], conn=None, res=True):
         
         return result
 
+# all_hotels_query = """
+# select htlID, htlEnName, htlFaName from tblHotels
+# where htlUUID is NULL
+# """
+
+# with get_db_connection() as conn:
+#     all_hotels = custom(
+#         query_string=all_hotels_query,
+#         conn=conn)
 
 for city_name in city_ids.keys():
     query_templ = """
@@ -96,7 +106,9 @@ for city_name in city_ids.keys():
                     mathc_check = "y"
                 elif DO_WARN_MANY_RESULTS:
                     mathc_check = input("y/n? [Press any key for y]: ")
-
+                else:
+                   mathc_check = "n"
+ 
                 if mathc_check.lower() == "y":
                     update_query = "UPDATE `Alibaba`.`tblHotels` SET `htlUUID`='{}', `htlEnName`='{}' WHERE  `htlID`={} or `htlID`={};".format(
                         alibaba_hotel['htlEnName'],
@@ -105,4 +117,5 @@ for city_name in city_ids.keys():
                         snapp_hotel['htlID'],
                     )
                     custom(update_query, conn=conn, res=False)
+                    print("Updated `htlUUID`='{}'".format(alibaba_hotel['htlEnName']))
                     conn.commit()
