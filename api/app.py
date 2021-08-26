@@ -1,6 +1,6 @@
 
 from flask import Flask, json, request, jsonify
-from .db_util import get_db_connection, custom, select
+from .db_util import get_db_connection, custom, select, select_all
 
 en_cities = {
     'تهران': 'tehran',
@@ -28,13 +28,18 @@ cities_UUID_name = {city_UUID: city_name for city_name,
 
 app = Flask(__name__)
 
-
 @app.route('/list')
 def list_view():
     token = request.args.get("token")
     list_type = request.args.get("type")  # cities/hotels/rooms
     hotel_UUID = request.args.get("hotel", "%")
     city_UUID = request.args.get("city", "%")
+
+    encoded = request.args.get("encoded", "false").lower()
+    compressed = request.args.get("compressed", "true").lower()
+    
+    do_compressed = None if compressed == "true" else 4
+    do_ensure_ascii = encoded == "true"
 
     result_data = []
 
@@ -95,7 +100,17 @@ def list_view():
                 }
             )
 
-    return jsonify(result_data), 200
+        
+    response = app.response_class(
+        response=json.dumps(
+            result_data,
+            ensure_ascii=do_ensure_ascii,
+            indent=do_compressed
+        ),
+        status=200,
+        mimetype='application/json',
+    )
+    return response
 
 
 @app.route('/alerts')
@@ -103,10 +118,15 @@ def alerts_view():
     token = request.args.get("token")
     date_from = request.args.get("from")  # YYYY-MM-DD format
     date_to = request.args.get("to")  # YYYY-MM-DD format
-    
+
     if not token:
         return "token is required", 400
     
+    encoded = request.args.get("encoded", "false").lower()
+    compressed = request.args.get("compressed", "true").lower()
+    
+    do_compressed = None if compressed == "true" else 4
+    do_ensure_ascii = encoded == "true"
 
     alert_type = request.args.get("type", "%") # reservation/price/options/discount
     alert_type_abrv = alert_type[0]
@@ -133,24 +153,24 @@ def alerts_view():
         INNER JOIN tblRooms ON romUUID = alrRoomUUID
         INNER JOIN tblHotels ON rom_htlID = htlID
         WHERE IFNULL(alrType, '') LIKE %s AND IFNULL(htlCity, '') LIKE %s
-        AND IFNULL(htlUUID, '') LIKE %s AND IFNULL(romUUID, '') LIKE %s;
+        AND IFNULL(htlUUID, '') LIKE %s AND IFNULL(romUUID, '') LIKE %s
     """ 
 
     data = [alert_type_abrv, city_UUID, hotel_UUID, room_UUID]
 
     if date_from:
-        query += " AND alrOnDate >= %s"
-        data.append(date_from)
+        query += " AND alrOnDate >= '{}'".format(date_from)
+        # data.append(date_from)
 
     if date_to:
-        query += " AND alrOnDate <= %s"
-        data.append(date_to)
+        query += " AND alrOnDate <= '{}'".format(date_to)
+        # data.append(date_to)
         
     if not alert_type in ["reservation", "price", "options", "discount", "%"]:
         return "Invalid type", 400
 
     with get_db_connection() as conn:
-        database_result = custom(query_string=query, data=data, conn=conn)
+        database_result = custom(query_string=query+";", data=data, conn=conn)
     
         
     for alert in database_result:
@@ -174,15 +194,36 @@ def alerts_view():
             alert_info = {"alibaba": alibab_info, "snapptrip": snapptrip_info}
 
         alert_data['info'] = alert_info
+        if alert['alrType'] in ["P", "D"]:
+            prices = list(alert_data['info'].values())
+            diff = abs(prices[0] - prices[1])
+            if diff < (prices[0] / 50):
+                continue
+
         result_data.append(alert_data)
         
-    return jsonify(result_data), 200
+    response = app.response_class(
+        response=json.dumps(
+            result_data,
+            ensure_ascii=do_ensure_ascii,
+            indent=do_compressed
+        ),
+        status=200,
+        mimetype='application/json',
+    )
+    return response
 
 
 @app.route('/userOpinion')
 def userOpinion_view():
     token = request.args.get("token")
     room_UUID = request.args.get("room", "%")
+
+    encoded = request.args.get("encoded", "false").lower()
+    compressed = request.args.get("compressed", "true").lower()
+    
+    do_compressed = None if compressed == "true" else 4
+    do_ensure_ascii = encoded == "true"
 
     opinions_result = []
 
@@ -191,7 +232,7 @@ def userOpinion_view():
         return "Invalid token", 401
 
     with get_db_connection() as conn:
-        opinions_database = select(
+        opinions_database = select_all(
             table="tblRoomsOpinions",
             select_columns=["ropUserName", "ropDate",
                             "ropStrengths", "ropWeakness", "ropText"],
@@ -211,7 +252,17 @@ def userOpinion_view():
             }
         )
 
-    return jsonify(opinions_result), 200
+        
+    response = app.response_class(
+        response=json.dumps(
+            opinions_result,
+            ensure_ascii=do_ensure_ascii,
+            indent=do_compressed
+        ),
+        status=200,
+        mimetype='application/json',
+    )
+    return response
 
 
 def is_token_valid(token):
@@ -231,4 +282,4 @@ def is_token_valid(token):
     return False
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0")
