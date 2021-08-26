@@ -1,43 +1,51 @@
 version: '3.7'
 
 services:
- alibaba_scrapper:
-    build:
-        context: .
-    env_file:
-        - .env 
-    environment:
-        - SCRAPE_ALIBABA=1
-    depends_on:
-        - mysqldb
-    volumes:
-        - ./:/scrapperd
-        - "/etc/timezone:/etc/timezone:ro"
-        - "/etc/localtime:/etc/localtime:ro"
- snapptrip_scrapper:
-    build:
-        context: .
-    env_file:
-        - .env 
-    environment:
-        - SCRAPE_SNAPPTRIP=1
-    depends_on:
-        - mysqldb
-    volumes:
-        - ./:/scrapperd
-        - "/etc/timezone:/etc/timezone:ro"
-        - "/etc/localtime:/etc/localtime:ro"
- mysqldb:
-    image: mysql:5.7
-    ports:
-        - 3306:3306
-    env_file:
-        - .env 
-    volumes:
-        - mysql:/var/lib/mysql
-        - mysql_config:/etc/mysql
-        - ./initdb:/docker-entrypoint-initdb.d
-
-volumes:
-    mysql:
-    mysql_config:
+    alibaba_scrapper1:
+        build:
+            context: .
+        env_file:
+            - .env 
+        environment:
+            - SCRAPE_ALIBABA=1
+            - ALIBABA_TO_SCRAPE_CITIES=
+        volumes:
+            - ./:/scrapperd
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+    alibaba_scrapper2:
+        build:
+            context: .
+        env_file:
+            - .env 
+        environment:
+            - SCRAPE_ALIBABA=1
+            - ALIBABA_TO_SCRAPE_CITIES=
+            volumes:
+            - ./:/scrapperd
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+    alibaba_scrapper3:
+        build:
+            context: .
+        env_file:
+            - .env 
+        environment:
+            - SCRAPE_ALIBABA=1
+            - ALIBABA_TO_SCRAPE_CITIES=
+        volumes:
+            - ./:/scrapperd
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+    snapptrip_scrapper:
+        build:
+            context: .
+        env_file:
+            - .env 
+        environment:
+            - SCRAPE_SNAPPTRIP=1
+            - SNAPPTRIP_TO_SCRAPE_CITIES=
+            volumes:
+            - ./:/scrapperd
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
