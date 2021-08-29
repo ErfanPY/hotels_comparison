@@ -18,11 +18,18 @@ def get_search_session_id(city_id, offset):
     url = "https://ws.alibaba.ir/api/v1/hotel/search"
     try:
         response = requests.post(url, data=data)
+
     except Exception as e:
         logger.error("Alibaba - network error - err:{}".format(e))
         return -1, -1
 
-    response_data = json.loads(response.content)
+    try:
+        response_data = json.loads(response.content)
+
+    except Exception as e:
+        logger.error("Alibaba - Couldn't load json - err:{}".format(e))
+        return -1, -1
+
 
     return response_data["result"]["sessionId"], start_date
 
@@ -46,7 +53,8 @@ def get_hotel_rooms_data(session_id, hotel_id):
     try:
         response = requests.post(url, data=data)
         response_data = json.loads(response.content)
-    except:
+    except Exception as e:
+        logger.error("Alibaba - network error - err:{}".format(e))
         response_data = {'result':{'finalResult':True, "rooms":[]}}
 
     return response_data
