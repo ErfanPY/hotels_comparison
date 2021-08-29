@@ -54,7 +54,8 @@ def main():
     
     room_UUID_groups = mgroupby(
         last_inserted_rooms.values(),
-        lambda room:room['romUUID']
+        # lambda room:room['romUUID']
+        lambda room:"{}_{}".format(room['romUUID'], room['avlDate'])
     )
 
     with get_db_connection() as conn:
@@ -70,7 +71,11 @@ def main():
                 single_room = list(htlFrom_groups.values())[0][0]
                 single_rooms.append(single_room)
             elif len(htlFrom_groups.keys()) == 2:
-                compare_rooms(alibaba_room=htlFrom_groups['A'][0], snapptrip_room=htlFrom_groups['S'][0], conn=conn)
+                compare_rooms(
+                    alibaba_room=htlFrom_groups['A'][0],
+                    snapptrip_room=htlFrom_groups['S'][0],
+                    conn=conn
+                )
             else:
                 print("Non handled condition, {}".format(str(htlFrom_groups)))
           
@@ -78,18 +83,25 @@ def main():
 
 
 def compare_rooms(alibaba_room, snapptrip_room, conn):
-    if not alibaba_room['avlBasePrice'] == snapptrip_room['avlBasePrice']:
-        alrType = 'P'
-        alrInfo = {
+    prices_alrInfo = {
+        'base_price':{
             alibaba_room['romID']: alibaba_room['avlBasePrice'],
-            snapptrip_room['romID']: snapptrip_room['avlBasePrice'],
-        }
-    elif not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
-        alrType = 'D'
-        alrInfo = {
+            snapptrip_room['romID']: snapptrip_room['avlBasePrice']
+        },
+        'discount_price':{
             alibaba_room['romID']: alibaba_room['avlDiscountPrice'],
             snapptrip_room['romID']: snapptrip_room['avlDiscountPrice'],
         }
+    }
+    if not alibaba_room['avlBasePrice'] == snapptrip_room['avlBasePrice']:
+
+        alrType = 'P'
+        alrInfo = prices_alrInfo
+        
+    elif not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
+        alrType = 'D'
+        alrInfo = prices_alrInfo
+
     elif not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
         alrType = 'O'
         alrInfo = {
