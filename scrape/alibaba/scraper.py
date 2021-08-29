@@ -78,7 +78,7 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
                 try:
                     scrape_hotel(city_name, hotel, session_id, date_from, today, sleep_time=sleep_time)
                 except Exception as e:
-                    logger.error("Alibaba - FAILED on City: {} hotel {} with error: {}".format(city_name, hotel['name'].get('fa'), e))
+                    logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(city_name, hotel['name'].get('fa'), e))
 
                 hotels_counter += 1
             
@@ -89,7 +89,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
 
     Args:
         city_name (str): The english name of search city.
-        hotel (dict): Contains hotel data (id, name).
+        hotel (dict): Contains hotel data (id, name, link).
         session_id (str): A session id to search in snaptrip site
         date_from (str): Formated date of search date range start.
         today (str): Frmated date of today for InsertionDate
@@ -120,13 +120,14 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
 
 
     final_result = False
+    rooms = []
     while not final_result:
         hotel_rooms_data = get_hotel_rooms_data(session_id, hotel_site_id)
-
+        rooms.extend(hotel_rooms_data['result']["rooms"])
         final_result = hotel_rooms_data['result']['finalResult']
         time.sleep(sleep_time)
 
-    for room_type in hotel_rooms_data['result']["rooms"]:
+    for room_type in rooms:
 
         room_type_id = room_type["id"]
         meal_plan = room_type['mealPlan']
