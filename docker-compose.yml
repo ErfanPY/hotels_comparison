@@ -1,51 +1,25 @@
 version: '3.7'
 
+x-common_scrapper: &scrapper
+        image: erfan123a/hotels_comparison:latest
+        env_file:
+            - .env
+        volumes:
+            - ./:/scrapperd
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+
 services:
-    alibaba_scrapper1:
-        build:
-            context: .
-        env_file:
-            - .env 
-        environment:
-            - SCRAPE_ALIBABA=1
-            - ALIBABA_TO_SCRAPE_CITIES=
-        volumes:
-            - ./:/scrapperd
-            - "/etc/timezone:/etc/timezone:ro"
-            - "/etc/localtime:/etc/localtime:ro"
-    alibaba_scrapper2:
-        build:
-            context: .
-        env_file:
-            - .env 
-        environment:
-            - SCRAPE_ALIBABA=1
-            - ALIBABA_TO_SCRAPE_CITIES=
-            volumes:
-            - ./:/scrapperd
-            - "/etc/timezone:/etc/timezone:ro"
-            - "/etc/localtime:/etc/localtime:ro"
-    alibaba_scrapper3:
-        build:
-            context: .
-        env_file:
-            - .env 
-        environment:
-            - SCRAPE_ALIBABA=1
-            - ALIBABA_TO_SCRAPE_CITIES=
-        volumes:
-            - ./:/scrapperd
-            - "/etc/timezone:/etc/timezone:ro"
-            - "/etc/localtime:/etc/localtime:ro"
-    snapptrip_scrapper:
-        build:
-            context: .
-        env_file:
-            - .env 
-        environment:
-            - SCRAPE_SNAPPTRIP=1
-            - SNAPPTRIP_TO_SCRAPE_CITIES=
-            volumes:
-            - ./:/scrapperd
-            - "/etc/timezone:/etc/timezone:ro"
-            - "/etc/localtime:/etc/localtime:ro"
+  aibaba-n1:
+    <<: *scrapper
+    environment:
+      - SCRAPE_ALIBABA=1
+      - ALIBABA_SCRAPPER_SLEEP_TIME=0
+      - ALIBABA_TO_SCRAPE_CITIES=tehran,bandarAbbas
+
+  aibaba-n2:
+    <<: *scrapper
+    environment:
+      - SCRAPE_ALIBABA=1
+      - ALIBABA_SCRAPPER_SLEEP_TIME=0
+      - ALIBABA_TO_SCRAPE_CITIES=mashhad,ahvaz
