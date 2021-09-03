@@ -1,6 +1,4 @@
 
-from collections import defaultdict
-
 from flask import Flask, json, request
 
 from .db_util import custom, get_db_connection, select, select_all
@@ -115,75 +113,69 @@ def list_view():
     )
     return response
 
-def mgroupby(iterator, key, key_name, items_key_name, sort_key=None, reverse=False):
+def mgroupby(iterator):
     date_key_index = {}
     city_key_index = {}
     hotel_key_index = {}
     site_key_index = {}
 
     groups = []
-    try:
-        for item in iterator:
-            key_date = str(item['avlInsertionDate'])
-            key_city = item['htlCity']+"_/_"+key_date
-            key_hotel = item['htlFaName']+"_/_"+key_city
-            key_site = item['htlFrom']+"_/_"+key_hotel
+    for item in iterator:
+        key_date = str(item['avlInsertionDate'])
+        key_city = item['htlCity']+"_/_"+key_date
+        key_hotel = item['htlFaName']+"_/_"+key_city
+        key_site = item['htlFrom']+"_/_"+key_hotel
 
-            index_date = date_key_index.get(key_date)
-            index_city = city_key_index.get(key_city)
-            index_hotel = hotel_key_index.get(key_hotel)
-            index_site = site_key_index.get(key_site)
+        index_date = date_key_index.get(key_date)
+        index_city = city_key_index.get(key_city)
+        index_hotel = hotel_key_index.get(key_hotel)
+        index_site = site_key_index.get(key_site)
 
-            if index_date is None:
-                groups.append({
-                    'date': key_date,
-                    'cities': []
-                })
-                
-                index_date = len(groups)-1
-                date_key_index[key_date] = index_date
+        if index_date is None:
+            groups.append({
+                'date': key_date,
+                'cities': []
+            })
+            
+            index_date = len(groups)-1
+            date_key_index[key_date] = index_date
 
-            if index_city is None:
-                groups[index_date]['cities'].append({
-                    "city": key_city.split('_/_')[0],
-                    'hotels': []
-                })
+        if index_city is None:
+            groups[index_date]['cities'].append({
+                "city": key_city.split('_/_')[0],
+                'hotels': []
+            })
 
-                index_city = len(groups[index_date]['cities'])-1
-                city_key_index[key_city] = index_city
+            index_city = len(groups[index_date]['cities'])-1
+            city_key_index[key_city] = index_city
 
-            if index_hotel is None:
-                groups[index_date]['cities'][index_city]['hotels'].append({
-                    "hotel": key_hotel.split('_/_')[0],
-                    'sites': []
-                })
-                
-                index_hotel = len(groups[index_date]['cities'][index_city]['hotels'])-1
-                hotel_key_index[key_hotel] = index_hotel
-        
-            if index_site is None:
-                groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'].append({
-                    "site": "alibaba" if key_site[0]=="A" else "snapptrip",
-                    'rooms': []
-                })
-                
-                index_site = len(groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'])-1
-                site_key_index[key_site] = index_site
+        if index_hotel is None:
+            groups[index_date]['cities'][index_city]['hotels'].append({
+                "hotel": key_hotel.split('_/_')[0],
+                'sites': []
+            })
+            
+            index_hotel = len(groups[index_date]['cities'][index_city]['hotels'])-1
+            hotel_key_index[key_hotel] = index_hotel
+    
+        if index_site is None:
+            groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'].append({
+                "site": "alibaba" if key_site[0]=="A" else "snapptrip",
+                'rooms': []
+            })
+            
+            index_site = len(groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'])-1
+            site_key_index[key_site] = index_site
 
 
-            groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'][index_site]['rooms'].append(
-                {
-                    "additives":item['romMealPlan'],
-                    "base_price":item['avlBasePrice'],
-                    "discount_price":item['avlDiscountPrice'],
-                    "name":item['romName'],
-                }
-            )
-    except Exception as e:
-        a=3
-    if not sort_key is None:
-        for group, items in groups.items():
-            groups[group] = sorted(items, key=sort_key, reverse=reverse)
+        groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'][index_site]['rooms'].append(
+            {
+                "additives":item['romMealPlan'],
+                "base_price":item['avlBasePrice'],
+                "discount_price":item['avlDiscountPrice'],
+                "name":item['romName'],
+            }
+        )
 
     return groups
 
@@ -228,38 +220,7 @@ def availability_view():
     with get_db_connection() as conn:
         database_result = custom(query_string=query+";", data=data, conn=conn)
 
-
-    nested_dict = lambda: defaultdict(nested_dict)
-    result_data = nested_dict()
-    aaaaaa = mgroupby(database_result, lambda x:x['avlInsertionDate'], 'date', 'cities')
-
-    for room in database_result:
-        hotel_site = "alibaba" if room['htlFrom'] == "A" else "snapptrip"
-       
-        room_data = {
-            "name": room["romName"],
-            "additives": room["romMealPlan"],
-            "base_price": room["avlBasePrice"],
-            "discount_price": room["avlDiscountPrice"],
-        }
-
-        if type(result_data[str(room["avlInsertionDate"])][room['htlCity']][room["htlFaName"]][hotel_site]) == list:
-            result_data[str(room["avlInsertionDate"])][room['htlCity']][room["htlFaName"]][hotel_site].append(room_data)
-        else:
-            result_data[str(room["avlInsertionDate"])][room['htlCity']][room["htlFaName"]][hotel_site] = [room_data, ]
-        a = 3
-        # result_data.append(
-        #     {
-        #         "name": room["romName"],
-        #         "city": room['htlCity'],
-        #         "hotel_site": hotel_site,
-        #         "hotel": room["htlFaName"],
-        #         "additives": room["romMealPlan"],
-        #         "on_date": room["avlInsertionDate"],
-        #         "base_price": room["avlBasePrice"],
-        #         "discount_price": room["avlDiscountPrice"],
-        #     }
-        # )
+    result_data = mgroupby(database_result)
 
     response = app.response_class(
         response=json.dumps(
