@@ -1,3 +1,13 @@
 fandvenv
 venv
-api/venv
+api/
+api_venv/
+initdb/
+.vscode/
+sql_dumps/
+temp/
+__pycache__
+*.log
+scrape/config.py
+fandenv/
+.fandogh/
