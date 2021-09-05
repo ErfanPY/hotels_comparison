@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 import logging
+import time
 
 import requests
 
@@ -16,42 +17,59 @@ def get_search_session_id(city_id, offset):
     data = '{"checkIn":"'+start_date+'","checkOut":"'+end_date+'","rooms":[{"adults":[30],"children":[]}],"destination":{"type":"City","id":"'+city_id+'"}}'
 
     url = "https://ws.alibaba.ir/api/v1/hotel/search"
-    try:
-        response = requests.post(url, data=data)
+    sleep_time = 0
+    while True:
+        try:
+            response = requests.post(url, data=data)
+            break
 
-    except Exception as e:
-        logger.error("Alibaba - network error - err:{}".format(e))
-        return -1, -1
+        except Exception as e:
+            logger.error("Alibaba - network error - err:{} - sleep_time:{}".format(e, sleep_time))
 
-    try:
-        response_data = json.loads(response.content)
+            if sleep_time >= 10 :
+                return -1, -1
 
-    except Exception as e:
-        logger.error("Alibaba - Couldn't load json - err:{}".format(e))
-        return -1, -1
+            sleep_time += 1
+            time.sleep(sleep_time)
+  
+    while True:
+        try:
+            response_data = json.loads(response.content)
+            return response_data["result"]["sessionId"], start_date
 
+        except Exception as e:
+            logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}".format(e, sleep_time))
+          
+            if sleep_time >= 10 :
+                return -1, -1
 
-    return response_data["result"]["sessionId"], start_date
+            sleep_time += 1
+            time.sleep(sleep_time)
 
 
 def get_search_data(session_id):
 
     data = '{"sessionId":"'+session_id+'","limit":100,"skip":0,"sort":{"field":"score","order":-1},"filter":[]}'
     url = "https://ws.alibaba.ir/api/v1/hotel/result"
+    sleep_time = 0
+    
+    while True:
+        try:
+            response = requests.post(url, data=data)
+            response_data = json.loads(response.content)
+    
+            return response_data
 
-    response = requests.post(url, data=data)
-    try:
-        response_data = json.loads(response.content)
-    except Exception as e:
-        logger.error("Alibaba - get_search_data - err:{}".format(e))
-        return {
-            'result': {
-                'result': [],
-                'lastChunk': False
-            }
-        }
-
-    return response_data
+        except Exception as e:
+            logger.error("Alibaba - get_search_data - err:{} - sleep_time:{}".format(e, sleep_time))
+           
+            if sleep_time >= 10 :
+                return {
+                    'error': True
+                }
+           
+            sleep_time += 1
+            time.sleep(sleep_time)
 
 
 def get_hotel_rooms_data(session_id, hotel_id):
@@ -59,12 +77,21 @@ def get_hotel_rooms_data(session_id, hotel_id):
 
     
     data = '{"sessionId":"'+session_id+'","hotelId":"'+hotel_id+'"}'
-    try:
-        response = requests.post(url, data=data)
-        response_data = json.loads(response.content)
+    sleep_time = 0
+   
+    while True:
+        try:
+            response = requests.post(url, data=data)
+            response_data = json.loads(response.content)
+        
+            return response_data
 
-    except Exception as e:
-        logger.error("Alibaba - network error - err:{}".format(e))
-        response_data = {'result':{'finalResult':True, "rooms":[]}}
+        except Exception as e:
+            logger.error("Alibaba - network error - err:{} - sleep_time:{}".format(e, sleep_time))
+            response_data = {'result':{'finalResult':True, "rooms":[]}}
 
-    return response_data
+            if sleep_time >= 10 :
+                return -1
+
+            sleep_time += 1
+            time.sleep(sleep_time)

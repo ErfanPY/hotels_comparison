@@ -65,13 +65,21 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
                 continue
 
             completed = False
+            failed = False
             hotels_data_results = []
             while not completed:
                 hotels_data = get_search_data(session_id)
+                if hotels_data['error']:
+                    logger.error("Alibaba - Getting city hotels failed: city_name:{}".format(city_name))
+                    failed = True
+                    break
                 hotels_data_results.extend(hotels_data['result']['result'])
                 completed = hotels_data['result']['lastChunk']
                 time.sleep(sleep_time)
 
+            if failed:
+                continue
+            
             # Make hotels_data unique
             hotels_data_results = list({v['id']:v for v in hotels_data_results}.values()) 
 
@@ -82,6 +90,9 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
                         city_name, hotel, session_id, date_from, today,
                         city_id=city_id, day_offset=day_offset, sleep_time=sleep_time
                     )
+                    if session_id == -1:
+                        logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(city_name, hotel['name'].get('fa'), e))
+
                 except Exception as e:
                     logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(city_name, hotel['name'].get('fa'), e))
 
@@ -128,11 +139,18 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, today
     rooms = []
     while not final_result:
         hotel_rooms_data = get_hotel_rooms_data(session_id, hotel_site_id)
-        
+        if hotel_rooms_data == -1:
+            logger.error("Alibaba - Getting city search failed - max sleep : city_name:{}".format(city_name))
+            return -1
+      
         if hotel_rooms_data.get('statusCode') == 408:
             session_id, date_from = get_search_session_id(city_id, day_offset)
-            logger.error(f"Alibaba - reset session - city: {city_id}, day: {day_offset}")
 
+            if session_id == -1:
+                logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
+                return -1
+
+            logger.error(f"Alibaba - reset session - city: {city_id}, day: {day_offset}")
         else:
             rooms.extend(hotel_rooms_data['result']["rooms"])
             final_result = hotel_rooms_data['result']['finalResult']
