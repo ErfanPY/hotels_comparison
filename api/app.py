@@ -29,12 +29,118 @@ cities_UUID_name = {city_UUID: city_name for city_name,
 
 app = Flask(__name__)
 
+QUERY_RESULT_LIMIT = 1000
+
+def is_token_valid(token):
+    if not token or not type(token) == str:
+        return False
+        
+    with get_db_connection() as conn:
+        token_data = select(
+            table="tblTokens",
+            select_columns=["tokSatatus"],
+            and_conditions={'tokUUID': token},
+            conn=conn
+        )
+    
+    if token_data and token_data['tokSatatus'] == "A":
+        return True
+    return False
+
+
+def mgroupby(iterator):
+    date_key_index = {}
+    city_key_index = {}
+    hotel_key_index = {}
+    site_key_index = {}
+
+    groups = {}
+    for item in iterator:
+        hotel_site = 'alibaba' if item['htlFrom'].lower() == "a" else "snapptrip"
+        key_date = str(item['avlInsertionDate'])
+        key_city = item['htlCity']+"_/_"+key_date
+        key_hotel = item['htlFaName']+"_/_"+key_city
+        key_site = item['htlFrom']+"_/_"+key_hotel
+
+        index_date = date_key_index.get(key_date)
+        index_city = city_key_index.get(key_city)
+        index_hotel = hotel_key_index.get(key_hotel)
+        index_site = site_key_index.get(key_site)
+
+        # if index_date is None:
+        #     groups.append({
+        #         'date': key_date,
+        #         'cities': {}
+        #     })
+            
+        #     index_date = len(groups)-1
+        #     date_key_index[key_date] = index_date
+
+ 
+        # { "CITY_NAME": {"Alibaba":{"HotelName":[{roomInfoObject_1}, {roomInfoObject_2}, ...]}}}
+        if groups.get(key_date) is None:
+            groups[key_date] = {}
+
+        if groups[key_date].get(item['htlCity']) is None:
+            groups[key_date][item['htlCity']] = {}
+
+        if groups[key_date][item['htlCity']].get(hotel_site) is None:
+            groups[key_date][item['htlCity']][hotel_site] = {}
+
+        if groups[key_date][item['htlCity']][hotel_site].get(item['htlFaName']) is None:
+            groups[key_date][item['htlCity']][hotel_site][item['htlFaName']] = []
+
+        groups[key_date][item['htlCity']][hotel_site][item['htlFaName']].append(
+            {
+                "additives":item['romMealPlan'],
+                "base_price":item['avlBasePrice'],
+                "insertion_date":item['avlInsertionDate'],
+                "discount_price":item['avlDiscountPrice'],
+                "name":item['romName'],
+            }
+        )
+
+        # if index_hotel is None:
+        #     groups[key_date][index_city]['hotels'].append({
+        #         "hotel": key_hotel.split('_/_')[0],
+        #         'sites': []
+        #     })
+            
+        #     index_hotel = len(groups[key_date][index_city]['hotels'])-1
+        #     hotel_key_index[key_hotel] = index_hotel
+    
+        # if index_site is None:
+        #     groups[key_date][index_city]['hotels'][index_hotel]['sites'].append({
+        #         "site": "alibaba" if key_site[0]=="A" else "snapptrip",
+        #         'rooms': []
+        #     })
+            
+        #     index_site = len(groups[key_date][index_city]['hotels'][index_hotel]['sites'])-1
+        #     site_key_index[key_site] = index_site
+
+
+        # groups[key_date][index_city]['hotels'][index_hotel]['sites'][index_site]['rooms'].append(
+        #     {
+        #         "additives":item['romMealPlan'],
+        #         "base_price":item['avlBasePrice'],
+        #         "insertion_date":item['avlInsertionDate'],
+        #         "discount_price":item['avlDiscountPrice'],
+        #         "name":item['romName'],
+        #     }
+        # )
+
+    return groups
+
+
 @app.route('/list')
 def list_view():
     token = request.args.get("token")
     list_type = request.args.get("type")  # cities/hotels/rooms
-    hotel_UUID = request.args.get("hotel", "%")
-    city_UUID = request.args.get("city", "%")
+    hotel_UUID = request.args.get("hotel")
+    city_UUID = request.args.get("city")
+
+    page = int(request.args.get("page", "1"))
+    page = max(page, 1) - 1
 
     encoded = request.args.get("encoded", "false").lower()
     compressed = request.args.get("compressed", "true").lower()
@@ -53,16 +159,25 @@ def list_view():
         data = []
 
     elif list_type == "hotels":
-        query = "select htlEnName, htlFaName, htlCity, htlUUID from tblHotels where IFNULL(htlCity, '') LIKE %s "
-        data = [city_UUID]
+        query = """
+            select htlEnName, htlFaName, htlCity, htlUUID, htlFrom
+            from tblHotels
+            WHERE (ISNULL(%s) OR htlCity = %s)
+        """
+        data = [city_UUID, city_UUID]
 
     elif list_type == "rooms":
         query = """
             select romName, htlCity, htlUUID, htlFaName, romUUID from tblRooms
-            INNER JOIN  tblHotels on rom_htlID = htlID
-            WHERE IFNULL(htlCity, '') LIKE %s AND IFNULL(htlUUID, '') LIKE %s
+            JOIN  tblHotels on rom_htlID = htlID
+            WHERE  (ISNULL(%s) OR htlCity = %s)  
+            AND  (ISNULL(%s) OR htlUUID = %s)
+            LIMIT %s OFFSET %s 
         """
-        data = [city_UUID, hotel_UUID]
+        data = [
+            city_UUID, city_UUID, hotel_UUID, hotel_UUID,
+            QUERY_RESULT_LIMIT, QUERY_RESULT_LIMIT*page
+        ]
 
     else:
         return "Invalid type", 400
@@ -85,7 +200,8 @@ def list_view():
                 {
                     "name": hotel["htlEnName"] or hotel["htlFaName"],
                     "city": hotel['htlCity'],
-                    "uid": hotel["htlUUID"]
+                    "uid": hotel["htlUUID"],
+                    "site": "snapptrip" if hotel['htlFrom'] == "S" else "alibaba" 
                 }
             )
 
@@ -113,82 +229,19 @@ def list_view():
     )
     return response
 
-def mgroupby(iterator):
-    date_key_index = {}
-    city_key_index = {}
-    hotel_key_index = {}
-    site_key_index = {}
-
-    groups = []
-    for item in iterator:
-        key_date = str(item['avlInsertionDate'])
-        key_city = item['htlCity']+"_/_"+key_date
-        key_hotel = item['htlFaName']+"_/_"+key_city
-        key_site = item['htlFrom']+"_/_"+key_hotel
-
-        index_date = date_key_index.get(key_date)
-        index_city = city_key_index.get(key_city)
-        index_hotel = hotel_key_index.get(key_hotel)
-        index_site = site_key_index.get(key_site)
-
-        if index_date is None:
-            groups.append({
-                'date': key_date,
-                'cities': []
-            })
-            
-            index_date = len(groups)-1
-            date_key_index[key_date] = index_date
-
-        if index_city is None:
-            groups[index_date]['cities'].append({
-                "city": key_city.split('_/_')[0],
-                'hotels': []
-            })
-
-            index_city = len(groups[index_date]['cities'])-1
-            city_key_index[key_city] = index_city
-
-        if index_hotel is None:
-            groups[index_date]['cities'][index_city]['hotels'].append({
-                "hotel": key_hotel.split('_/_')[0],
-                'sites': []
-            })
-            
-            index_hotel = len(groups[index_date]['cities'][index_city]['hotels'])-1
-            hotel_key_index[key_hotel] = index_hotel
-    
-        if index_site is None:
-            groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'].append({
-                "site": "alibaba" if key_site[0]=="A" else "snapptrip",
-                'rooms': []
-            })
-            
-            index_site = len(groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'])-1
-            site_key_index[key_site] = index_site
-
-
-        groups[index_date]['cities'][index_city]['hotels'][index_hotel]['sites'][index_site]['rooms'].append(
-            {
-                "additives":item['romMealPlan'],
-                "base_price":item['avlBasePrice'],
-                "discount_price":item['avlDiscountPrice'],
-                "name":item['romName'],
-            }
-        )
-
-    return groups
-
 
 @app.route('/availability')
 def availability_view():
     token = request.args.get("token")
-    hotel_UUID = request.args.get("hotel", "%")
-    city_UUID = request.args.get("city", "%")
+    hotel_UUID = request.args.get("hotel")
+    city_UUID = request.args.get("city")
     
     date_from = request.args.get("from")  # YYYY-MM-DD format
     date_to = request.args.get("to")  # YYYY-MM-DD format
     
+    page = int(request.args.get("page", "1"))
+    page = max(page, 1) - 1
+
     encoded = request.args.get("encoded", "false").lower()
     compressed = request.args.get("compressed", "true").lower()
     
@@ -201,21 +254,28 @@ def availability_view():
 
     query = """
         select
-            avlInsertionDate, avlBasePrice, avlDiscountPrice, 
-            htlFaName, htlCity, htlFrom,
+            avlInsertionDate, 
+            avlBasePrice, 
+            avlDiscountPrice, 
+            avlDate,
+            htlFaName, htlEnName, htlCity, htlFrom,
             romName, romMealPlan
         FROM tblAvailabilityInfo
-        INNER JOIN  tblRooms on avl_romID = romID
-        INNER JOIN  tblHotels on rom_htlID = htlID
-        where IFNULL(htlCity, '') LIKE %s AND IFNULL(htlUUID, '') LIKE %s
+        JOIN  tblRooms on avl_romID = romID
+        JOIN  tblHotels on rom_htlID = htlID
+        WHERE  (ISNULL(%s) OR htlEnName = %s OR htlFaName = %s)  
+            AND  (ISNULL(%s) OR htlCity =%s)  
+            AND  avlDate >= IFNULL(%s, DATE_SUB(NOW(), INTERVAL 7 DAY)) 
+            AND  avlDate <= IFNULL(%s,DATE_ADD(IFNULL(%s, NOW()), INTERVAL 7 DAY))
+        ORDER BY avlDate
+        LIMIT %s OFFSET %s
     """
-    data = [city_UUID, hotel_UUID]
-    
-    if date_from:
-        query += " AND avlDate >= '{}'".format(date_from)
-
-    if date_to:
-        query += " AND avlDate <= '{}'".format(date_to)
+    data = [
+        hotel_UUID, hotel_UUID, hotel_UUID,
+        city_UUID, city_UUID,
+        date_from, date_to, date_from,
+        QUERY_RESULT_LIMIT, QUERY_RESULT_LIMIT*page
+    ]
 
     with get_db_connection() as conn:
         database_result = custom(query_string=query+";", data=data, conn=conn)
@@ -243,18 +303,22 @@ def alerts_view():
     if not token:
         return "token is required", 400
     
+    page = int(request.args.get("page", "1")) - 1
+    
     encoded = request.args.get("encoded", "false").lower()
     compressed = request.args.get("compressed", "true").lower()
     
     do_compressed = None if compressed == "true" else 4
     do_ensure_ascii = encoded == "true"
 
-    alert_type = request.args.get("type", "%") # reservation/price/options/discount
+    alert_type = request.args.get("type") # reservation/price/options/discount
     alert_type_abrv = alert_type[0]
-    
-    city_UUID = request.args.get("city", "%")
-    hotel_UUID = request.args.get("hotel", "%")
-    room_UUID = request.args.get("room", "%")
+    if not alert_type in ["reservation", "price", "options", "discount"]:
+        return "Invalid type", 400
+
+    city_UUID = request.args.get("city")
+    hotel_UUID = request.args.get("hotel")
+    room_UUID = request.args.get("room")
 
     type_abrv_to_complete = {
         'R': 'reservation',
@@ -269,29 +333,38 @@ def alerts_view():
         return "Invalid token", 401
 
     query = """
-        SELECT alrRoomUUID, alrType, alrOnDate, alrA_romID, alrS_romID, alrInfo
+        SELECT 
+            alrRoomUUID,
+            alrType,
+            alrOnDate,
+            alrA_romID,
+            alrS_romID,
+            alrInfo
         FROM tblAlert 
-        INNER JOIN tblRooms ON romUUID = alrRoomUUID
-        INNER JOIN tblHotels ON rom_htlID = htlID
-        WHERE IFNULL(alrType, '') LIKE %s AND IFNULL(htlCity, '') LIKE %s
-        AND IFNULL(htlUUID, '') LIKE %s AND IFNULL(romUUID, '') LIKE %s
+        LEFT JOIN tblRooms A 
+        ON A.romID = alrA_romID
+        LEFT JOIN tblRooms S
+        ON S.romID = alrS_romID 
+        JOIN tblHotels ON htlID = IFNULL(A.rom_htlID, S.rom_htlID)
+        WHERE  (ISNULL(%s) OR alrType = %s)
+            AND  (ISNULL(%s) OR htlCity = %s) 
+            AND  (ISNULL(%s) OR htlUUID = %s)
+            AND  alrOnDate >= IFNULL(%s, DATE_SUB(NOW(), INTERVAL 7 DAY)) 
+            AND  alrOnDate <= IFNULL(%s,DATE_ADD(IFNULL(%s, NOW()), INTERVAL 7 DAY))
+        ORDER BY alrOnDate
+        LIMIT %s OFFSET %s
     """ 
 
-    data = [alert_type_abrv, city_UUID, hotel_UUID, room_UUID]
-
-    if date_from:
-        query += " AND alrOnDate >= '{}'".format(date_from)
-        # data.append(date_from)
-
-    if date_to:
-        query += " AND alrOnDate <= '{}'".format(date_to)
-        # data.append(date_to)
-        
-    if not alert_type in ["reservation", "price", "options", "discount", "%"]:
-        return "Invalid type", 400
+    data = [
+        alert_type_abrv, alert_type_abrv,
+        city_UUID, city_UUID,
+        hotel_UUID, hotel_UUID,
+        date_from, date_to, date_from,
+        QUERY_RESULT_LIMIT, QUERY_RESULT_LIMIT*page
+    ]
+ 
 
     with get_db_connection() as conn:
-        query += "GROUP BY romUUID;"
         database_result = custom(query_string=query, data=data, conn=conn)
     
         
@@ -302,7 +375,7 @@ def alerts_view():
         alert_data =  {
             "uid": alert['alrRoomUUID'],
             "type": type_abrv_to_complete[alert['alrType']],
-            "date": alert['alrOnDate']
+            "date": alert['alrOnDate'].strftime("%Y-%m-%d")
         }
         
         alrInfo = json.loads(alert['alrInfo'])
@@ -349,7 +422,7 @@ def alerts_view():
         response=json.dumps(
             result_data,
             ensure_ascii=do_ensure_ascii,
-            indent=do_compressed
+            indent=do_compressed,
         ),
         status=200,
         mimetype='application/json',
@@ -386,7 +459,7 @@ def userOpinion_view():
     for opinion in opinions_database:
         opinions_result.append(
             {
-                "from": "snapptrip",
+                "site": "snapptrip",
                 "name": opinion['ropUserName'],
                 "date": opinion["ropDate"],
                 "strengths": opinion["ropStrengths"],
@@ -408,21 +481,9 @@ def userOpinion_view():
     return response
 
 
-def is_token_valid(token):
-    if not token or not type(token) == str:
-        return False
-        
-    with get_db_connection() as conn:
-        token_data = select(
-            table="tblTokens",
-            select_columns=["tokSatatus"],
-            and_conditions={'tokUUID': token},
-            conn=conn
-        )
-    
-    if token_data and token_data['tokSatatus'] == "A":
-        return True
-    return False
+@app.route('/health_check')
+def health_check():
+    return "OK"
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0")
