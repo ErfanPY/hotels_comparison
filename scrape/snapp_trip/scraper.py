@@ -281,6 +281,11 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
 
             for data in room_calender['data']:
                 for day in data['calendar']:
+                    base_price = day['prices']['local_price']*10
+                    dsicount_price = day['prices']['local_price_off']*10
+
+                    if dsicount_price > base_price:
+                        base_price, dsicount_price = dsicount_price, base_price
 
                     insert_select_id(
                         table="tblAvailabilityInfo",

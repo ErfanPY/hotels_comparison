@@ -40,7 +40,16 @@ def get_search_data(session_id):
     url = "https://ws.alibaba.ir/api/v1/hotel/result"
 
     response = requests.post(url, data=data)
-    response_data = json.loads(response.content)
+    try:
+        response_data = json.loads(response.content)
+    except Exception as e:
+        logger.error("Alibaba - get_search_data - err:{}".format(e))
+        return {
+            'result': {
+                'result': [],
+                'lastChunk': False
+            }
+        }
 
     return response_data
 
@@ -53,6 +62,7 @@ def get_hotel_rooms_data(session_id, hotel_id):
     try:
         response = requests.post(url, data=data)
         response_data = json.loads(response.content)
+
     except Exception as e:
         logger.error("Alibaba - network error - err:{}".format(e))
         response_data = {'result':{'finalResult':True, "rooms":[]}}
