@@ -10,6 +10,12 @@ x-common_scrapper: &scrapper
             - "/etc/localtime:/etc/localtime:ro"
 
 services:
+
+    snapptripp-n1:
+      <<: *scrapper
+      environment:
+        - SCRAPE_SNAPPTRIP=1
+
   aibaba-n1:
     <<: *scrapper
     environment:
@@ -23,3 +29,22 @@ services:
       - SCRAPE_ALIBABA=1
       - ALIBABA_SCRAPPER_SLEEP_TIME=0
       - ALIBABA_TO_SCRAPE_CITIES=mashhad,ahvaz
+
+  aibaba-n3:
+    <<: *scrapper
+    environment:
+      - SCRAPE_ALIBABA=1
+      - ALIBABA_SCRAPPER_SLEEP_TIME=0
+      - ALIBABA_TO_SCRAPE_CITIES=shiraz,qazvin
+
+  aibaba-n4:
+    <<: *scrapper
+    environment:
+      - SCRAPE_ALIBABA=1
+      - ALIBABA_SCRAPPER_SLEEP_TIME=0
+      - ALIBABA_TO_SCRAPE_CITIES=isfahan,sari
+  
+  snapptripp-n1:
+    <<: *scrapper
+    environment:
+      - SCRAPE_SNAPPTRIP=1
