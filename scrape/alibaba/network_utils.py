@@ -87,7 +87,7 @@ def get_hotel_rooms_data(session_id, hotel_id):
             return response_data
 
         except Exception as e:
-            logger.error("Alibaba - network error - err:{} - sleep_time:{}".format(e, sleep_time))
+            logger.error("Alibaba - rooms_data network error - err:{} - sleep_time:{}".format(e, sleep_time))
             response_data = {'result':{'finalResult':True, "rooms":[]}}
 
             if sleep_time >= 10 :
