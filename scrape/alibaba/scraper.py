@@ -71,7 +71,7 @@ def get_city_hotels(session_id, city_name, sleep_time=1):
 
     # Make hotels_data unique
     hotels_data_results = list({v['id']:v for v in hotels_data_results}.values()) 
-
+    return hotels_data_results
 
 def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
 
@@ -214,7 +214,7 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
         if room['price'] > room['boardPrice']:
             room['price'], room['boardPrice'] = room['boardPrice'], room['price']
         
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         insert_select_id(
             table="tblAvailabilityInfo",
