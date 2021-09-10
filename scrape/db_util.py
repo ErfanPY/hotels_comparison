@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def get_db_connection(host=None, user=None, password=None, port=None, database=None):
     cnx = mysql.connector.connect(
         host     = host      or os.environ.get("MYSQL_HOST"),
