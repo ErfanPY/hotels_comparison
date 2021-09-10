@@ -48,100 +48,110 @@ else:
     en_to_scrape_cities = to_scrape_cities_inp.split(',')
     to_scrape_cities = [en_fa_cities[city] for city in en_to_scrape_cities]
 
+SLEEP_TIME = int(os.environ.get("SNAPPTRIP_SCRAPPER_SLEEP_TIME", "4"))
 
-def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
+BASE_URL = 'https://www.snapptrip.com/'
+
+def main(proxy_host:str=None, proxy_port:int=None):
     # socks.set_default_proxy(proxy_host, proxy_port)
     # if not proxy_host is None:
     #     socket.socket = socks.socksocket
 
-    BASE_URL = 'https://www.snapptrip.com/'
     
-
     for city_name in to_scrape_cities:
-        city_url = make_city_url(city_name.strip())
-        to_scrape_url = get_city_dated_url(city_url)
+
+        hotels = get_city_hotels(city_name)
+        scrape_hotels(city_name, hotels)
+
+
+def get_city_hotels(city_name, day_offset=0):
+    all_hotels = []
+
+    city_url = make_city_url(city_name.strip())
+    to_scrape_url = get_city_dated_url(city_url, day_offset)
         
-        has_next_page = True
-        total_hotels_counter = 0
-        available_hotels_counter = 0
-        page_no = 1
+    total_hotels_counter = 0
+    page_no = 1
 
-        while has_next_page:
+    while True:
+        
+        logger.error("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
 
-            logger.error("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
+        search_page_soup = get_content_make_soup(to_scrape_url)
+        time.sleep(SLEEP_TIME)
+        if search_page_soup == -1:
+            logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
+            continue
 
-            search_page_soup = get_content_make_soup(to_scrape_url)
-            time.sleep(sleep_time)
-            if search_page_soup == -1:
-                logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
-                continue
-
-            hotels = search_page_soup.select_one(".hotels-data").findAll("li", {'data-hotel-id': True})
+        hotels = search_page_soup.select_one(".hotels-data").findAll("li", {'data-hotel-id': True})
+        
+        for hotel in hotels:
+            if "ظرفیت تکمیل" in hotel.text or hotel.select_one(".badge-fill-danger"):
+                break
             
-            total_hotels_counter += len(hotels)
-            
-            for hotel in hotels:
-                if "ظرفیت تکمیل" in hotel.text or hotel.select_one(".badge-fill-danger"):
-                    has_next_page = False
-                    logger.error("Snapptrip - City: {} FINISHED(No more room available). total {} and {} available hotels in {} page.".format(
-                        city_name,
-                        total_hotels_counter,
-                        available_hotels_counter,
-                        page_no
-                    ))
-                    break
+            parsed_hotel = parse_hotel(hotel, city_name)
+            all_hotels.append(parsed_hotel)
+        
+            total_hotels_counter += 1
 
-                hotel_site_id = hotel.contents[3].attrs['data-id']
-
-                hotel_url = hotel.select_one(
-                    '#resultpage-hotelcard-cta').get('href')
-                hotel_url = urljoin(BASE_URL, hotel_url)
-
-                try:
-                    scrape_hotel(hotel_url, hotel_site_id, city_name)
-                    
-                    time.sleep(sleep_time)
-                
-                    available_hotels_counter += 1
-
-                except Exception as e:
-                    logger.error("Snapptrip - FAILED on City: {} hotel: {}, error: {}".format(
-                        city_name,
-                        hotel_url,
-                        e
-                    ))
-
-            logger.error("Snapptrip - City: {} has total {} and {} available hotels in {} page.".format(
-                city_name,
-                total_hotels_counter,
-                available_hotels_counter,
-                page_no
-            ))
-
-            next_page_div = search_page_soup.select_one('.pagination-next')
-            if not next_page_div is None:
-                next_page_url = next_page_div.select_one('a').get('href')
-                if next_page_url is None or next_page_url == "" or next_page_url == "/":
-                    has_next_page = False
-                    logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format(
-                        city_name,
-                        total_hotels_counter,
-                        available_hotels_counter,
-                        page_no
-                    ))
-                    continue
-
+        next_page_div = search_page_soup.select_one('.pagination-next')
+        if next_page_div is None:
+            next_page_url = next_page_div.select_one('a').get('href')
+            if next_page_url and not next_page_url == "/":
                 to_scrape_url = urljoin(BASE_URL, next_page_url)
                 page_no += 1
             else:
-                has_next_page = False
-                logger.error("Snapptrip - City: {} FINISHED(No more pages). total {} and {} available hotels in {} page.".format(
-                    city_name,
-                    total_hotels_counter,
-                    available_hotels_counter,
-                    page_no
-                ))
-                continue
+                break
+        else:
+            break
+            
+    return all_hotels
+
+
+def scrape_hotels(city_name, hotels):
+    available_hotels_counter = 0
+    hotels_count = len(hotels)
+
+    for hotel in hotels:
+ 
+        try:
+            scrape_hotel(hotel['url'], hotel['faName'], hotel['id'], city_name)
+                    
+            time.sleep(SLEEP_TIME)
+                
+            available_hotels_counter += 1
+
+        except Exception as e:
+            logger.error("Snapptrip - FAILED on City: {} hotel: {}, error: {}".format(
+                        city_name,
+                        hotel['url'],
+                        e
+                    ))
+
+    logger.error("Snapptrip - City: {} has total {} and {} available hotels.".format(
+                city_name,
+                hotels_count,
+                available_hotels_counter,
+            ))
+
+
+def parse_hotel(hotel, city_name):
+    hotel_site_id = hotel.contents[3].attrs['data-id']
+
+    hotel_url = hotel.select_one(
+                    '#resultpage-hotelcard-cta').get('href')
+    hotel_url = urljoin(BASE_URL, hotel_url)
+    hotel_name = hotel_url.split("/")[5].split("?")[0]
+
+    hotel = {
+        "hotel_from": "snapptrip",
+        "id": hotel_site_id,
+        "url": hotel_url,
+        "faName": hotel_name,
+        "city": city_name
+    }
+
+    return hotel
 
 
 def make_city_url(city_name):
@@ -149,19 +159,18 @@ def make_city_url(city_name):
     return base_url.format(city_name=city_name)
 
 
-def scrape_hotel(hotel_url: str, hotel_site_id: str, city_name: str) -> None:
+def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name: str) -> None:
     """Gets and saves hotel then cals scrape_hotel_rooms
 
     Args:
         hotel_url (str): A url points to the hotel page.
+        hotel_url (str): Persian name of hotel.
         hotel_site_id (str): ID of hotel on snapptrip site.
         city_name (str): City name.
 
     Returns:
         None
     """
-
-    hotel_name = hotel_url.split("/")[5].split("?")[0]
 
     logger.error("Snapptrip - Scape Hotel {} - {}".format(city_name, hotel_name))
 
@@ -190,7 +199,7 @@ def scrape_hotel(hotel_url: str, hotel_site_id: str, city_name: str) -> None:
 
     comments_soup = hotel_soup.select('#rating-hotel')[0]
 
-    rooms_name_id = scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id,)
+    rooms_name_id = scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id)
     
     add_rooms_comment(comments_soup, rooms_name_id)
 
@@ -364,5 +373,5 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:
 
 
 if __name__ == "__main__":
-    main(sleep_time=1)
+    main()
     print("done")

@@ -53,27 +53,10 @@ if START_DAY == 0 and os.path.exists(scrape_stat_path):
     with open(scrape_stat_path) as f:
         START_DAY = int(f.readline().strip())
 
+SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME"))
 
-def get_city_hotels(session_id, city_name, sleep_time=1):
-    completed = False
-    hotels_data_results = []
 
-    while not completed:
-        hotels_data = get_search_data(session_id)
-        
-        if hotels_data['error']:
-            logger.error("Alibaba - Getting city hotels failed: city_name:{}".format(city_name))
-            return -1
-            
-        hotels_data_results.extend(hotels_data['result']['result'])
-        completed = hotels_data['result']['lastChunk']
-        time.sleep(sleep_time)
-
-    # Make hotels_data unique
-    hotels_data_results = list({v['id']:v for v in hotels_data_results}.values()) 
-    return hotels_data_results
-
-def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
+def main(proxy_host:str=None, proxy_port:int=None):
 
     for day_offset in range(START_DAY, 30):
         for city_name in TO_SCRAPE_CITIES:
@@ -87,14 +70,14 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
                 logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
                 continue
 
-            hotels_data = get_city_hotels(session_id, city_name, sleep_time)
+            hotels_data = get_city_hotels(session_id, city_name)
 
             for hotel in hotels_data:
-                time.sleep(sleep_time)
+                time.sleep(SLEEP_TIME)
                 try:
                     session_id = scrape_hotel(
-                        city_name, hotel, session_id=session_id, date_from=date_from,
-                        city_id=city_id, day_offset=day_offset, sleep_time=sleep_time
+                        city_name, hotel, session_id=session_id,
+                        date_from=date_from, day_offset=day_offset
                     )
                     if session_id == -1:
                         logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(city_name, hotel['name'].get('fa'), e))
@@ -112,20 +95,63 @@ def main(sleep_time:int, proxy_host:str=None, proxy_port:int=None):
     with open(scrape_stat_path, 'w') as f:
         f.write("0")
 
-def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, city_id, day_offset, sleep_time:int=1):
+
+def get_city_hotels(session_id, city_name, date_from=None, day_offset=None):
+    completed = False
+    hotels_data_results = []
+
+    while not completed:
+        hotels_data = get_search_data(session_id)
+        
+        if hotels_data['error']:
+            logger.error("Alibaba - Getting city hotels failed: city_name:{}".format(city_name))
+            return -1
+        
+        for hotel in hotels_data['result']['result']:
+            parsed_hotel = parse_hotel(hotel)
+            
+            parsed_hotel['session_id'] = session_id
+            parsed_hotel['city'] = city_name
+            parsed_hotel['date_from'] = date_from
+            parsed_hotel['day_offset'] = day_offset
+
+            hotels_data_results.append(parsed_hotel)
+        
+        completed = hotels_data['result']['lastChunk']
+        time.sleep(SLEEP_TIME)
+
+    # Make hotels_data unique
+    hotels_data_results = list({v['id']:v for v in hotels_data_results}.values()) 
+    return hotels_data_results
+
+
+def parse_hotel(hotel):
+    hotel_site_id = hotel["id"]
+    hotel_url = urljoin(BASE_URL, hotel['link'])
+    faName = hotel['name'].get('fa')
+    enName = hotel['name'].get('en')
+
+    return {
+        "url": hotel_url,
+        "hotel_from": "alibaba",
+        "id": hotel_site_id,
+        "faName": faName,
+        "enName": enName
+    }
+
+
+def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_offset):
     """Scrape and save hotel then calls rooms scraper.
 
     Args:
         city_name (str): The english name of search city.
-        hotel (dict): Contains hotel data (id, name, link).
+        hotel (dict): Contains hotel data (id, faName, enName, url).
         session_id (str): A session id to search in snaptrip site
         date_from (str): Formated date of search date range start.
 
     Returns:
         None
     """
-    hotel_site_id = hotel["id"]
-    hotel_url = urljoin(BASE_URL, hotel['link'])
     rooms_counter = 0
 
     with get_db_connection() as conn:
@@ -133,14 +159,14 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, city_
             table='tblHotels',
             key_value={
                 'htlCity': city_name,
-                'htlFaName': hotel['name'].get('fa'),
-                'htlEnName': hotel['name'].get('en'),
-                "htlUrl": hotel_url,
+                'htlFaName': hotel['faName'],
+                'htlEnName': hotel['enName'],
+                "htlUrl": hotel['url'],
                 "htlFrom": 'A'
             },
             id_field='htlID',
             identifier_condition={
-                "htlFaName": hotel['name'].get('fa')
+                "htlFaName": hotel['faName']
             },
             conn=conn
         )
@@ -149,12 +175,13 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, city_
     final_result = False
     rooms = []
     while not final_result:
-        hotel_rooms_data = get_hotel_rooms_data(session_id, hotel_site_id)
+        hotel_rooms_data = get_hotel_rooms_data(session_id, hotel['id'])
         if hotel_rooms_data == -1:
             logger.error("Alibaba - Getting city search failed - max sleep : city_name:{}".format(city_name))
             return -1
       
         if hotel_rooms_data.get('statusCode') == 408:
+            city_id = city_ids[city_name]
             session_id, date_from = get_search_session_id(city_id, day_offset)
 
             if session_id == -1:
@@ -165,7 +192,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, city_
         else:
             rooms.extend(hotel_rooms_data['result']["rooms"])
             final_result = hotel_rooms_data['result']['finalResult']
-            time.sleep(sleep_time)
+            time.sleep(SLEEP_TIME)
 
 
     for room_type in rooms:
@@ -177,8 +204,9 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, city_
                 meal_plan=meal_plan)
             rooms_counter += 1
 
-    logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['name'], rooms_counter))
+    logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['enName'], rooms_counter))
     return session_id
+
 
 def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
     """Save room data to database
@@ -232,5 +260,5 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
 
 
 if __name__ == "__main__":
-    main(sleep_time=1)
+    main()
     print("Alibaba Done!")
