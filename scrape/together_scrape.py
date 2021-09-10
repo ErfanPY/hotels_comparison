@@ -23,14 +23,20 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    visited_snapp_hotel = []
+
     for day_offset in range(30):
         for city_name in TO_SCRAPE_CITIES:
             uuid_hotels = defaultdict(list)
 
-            # TODO: Get all snapp hotels even if reserved.
-
             for hotel in s_get_city_hotels(city_name, day_offset):
-                uuid_hotels[hotel_to_uuid(hotel)].append(hotel)
+                hotel_uuid = hotel_to_uuid(hotel)
+
+                if uuid and uuid in visited_snapp_hotel:
+                    continue
+
+                uuid_hotels[uuid].append(hotel)
+                visited_snapp_hotel.append(uuid)
 
             for hotel in a_get_city_hotels(city_name, day_offset):
                 uuid_hotels[hotel_to_uuid(hotel)].append(hotel)
