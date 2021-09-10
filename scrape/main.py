@@ -13,12 +13,10 @@ proxy_host = os.environ.get("SCRAPPER_PROXY_HOST")
 proxy_port = os.environ.get("SCRAPPER_PROXY_PORT")
 
 if os.environ.get("SCRAPE_ALIBABA") == "1":
-    sleep_time = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME"))
-    alibaba_scraper(sleep_time=sleep_time, proxy_host=proxy_host, proxy_port=proxy_port)
+    alibaba_scraper(proxy_host=proxy_host, proxy_port=proxy_port)
 
 if os.environ.get("SCRAPE_SNAPPTRIP") == "1":
-    sleep_time = int(os.environ.get("SNAPPTRIP_SCRAPPER_SLEEP_TIME"))
-    snapp_trip_scraper(sleep_time=sleep_time, proxy_host=proxy_host, proxy_port=proxy_port)
+    snapp_trip_scraper(proxy_host=proxy_host, proxy_port=proxy_port)
 
 if os.environ.get("COMPARE_SCRAPES") == "1":
     comapre_runner()
