@@ -19,6 +19,9 @@ from scrape.snapp_trip.scraper import (
     scrape_hotel as snapptrip_scrape_hotel
 )
 
+from scrape.compare_rooms import main as compare_scrapes
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,6 +49,8 @@ def main():
 
                 for hotel in hotels:
                     scrape_hotel(hotel)
+                
+    compare_scrapes()
 
 
 def a_get_city_hotels(city_name: str, day_offset: int) -> list:
