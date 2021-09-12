@@ -75,8 +75,6 @@ def get_city_hotels(city_name, day_offset=0):
 
     while True:
         
-        logger.error("Snapptrip - Fetching hotels : {}".format(to_scrape_url))
-
         search_page_soup = get_content_make_soup(to_scrape_url)
         time.sleep(SLEEP_TIME)
         if search_page_soup == -1:
@@ -164,7 +162,7 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
 
     Args:
         hotel_url (str): A url points to the hotel page.
-        hotel_url (str): Persian name of hotel.
+        hotel_name (str): Persian name of hotel.
         hotel_site_id (str): ID of hotel on snapptrip site.
         city_name (str): City name.
 
@@ -172,15 +170,13 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
         None
     """
 
-    logger.error("Snapptrip - Scape Hotel {} - {}".format(city_name, hotel_name))
-
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
             table='tblHotels',
             key_value={
                 "htlFaName": hotel_name,
                 "htlEnName": "",
-                "htlCity": fa_en_cities[city_name],
+                "htlCity": fa_en_cities.get(city_name, city_name),
                 "htlUrl": hotel_url,
                 "htlFrom": 'S'
             },
