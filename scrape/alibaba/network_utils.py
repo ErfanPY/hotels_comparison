@@ -21,7 +21,10 @@ def get_search_session_id(city_id, offset):
     while True:
         try:
             response = requests.post(url, data=data)
-            break
+            if response.status_code == 429:
+                logger.error("Alibaba - session - Too many request")
+            else:
+                break
 
         except Exception as e:
             logger.error("Alibaba - network error - err:{} - sleep_time:{}".format(e, sleep_time))
@@ -31,7 +34,8 @@ def get_search_session_id(city_id, offset):
 
             sleep_time += 1
             time.sleep(sleep_time)
-  
+        
+
     while True:
         try:
             response_data = json.loads(response.content)
@@ -56,9 +60,12 @@ def get_search_data(session_id):
     while True:
         try:
             response = requests.post(url, data=data)
-            response_data = json.loads(response.content)
-    
-            return response_data
+            if response.status_code == 429:
+                logger.error("Alibaba - search - Too many request")
+            else:
+                response_data = json.loads(response.content)
+        
+                return response_data
 
         except Exception as e:
             logger.error("Alibaba - get_search_data - err:{} - sleep_time:{}".format(e, sleep_time))
@@ -82,9 +89,12 @@ def get_hotel_rooms_data(session_id, hotel_id):
     while True:
         try:
             response = requests.post(url, data=data)
-            response_data = json.loads(response.content)
-        
-            return response_data
+            if response.status_code == 429:
+                logger.error("Alibaba - hotels - Too many request")
+            else:
+                response_data = json.loads(response.content)
+            
+                return response_data
 
         except Exception as e:
             logger.error("Alibaba - rooms_data network error - err:{} - sleep_time:{}".format(e, sleep_time))
