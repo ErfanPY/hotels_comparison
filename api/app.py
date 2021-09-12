@@ -298,25 +298,31 @@ def alerts_view():
 
 @app.route('/info')
 def availability_view():
+    city_UUID = request.args.get("city")
+    site_from = request.args.get("site")
+    hotel_UUID = request.args.get("hotel")
+    hotel_name = request.args.get("hotel-name")
     date_from = request.args.get("from")  # YYYY-MM-DD format
     date_to = request.args.get("to")  # YYYY-MM-DD format
-    hotel_UUID = request.args.get("hotel")
-    city_UUID = request.args.get("city")
+    crawl = request.args.get("crawl")  # Date+Time (YYYY-MM-DD-[AM|PM])
     
     token = request.args.get("token")
     page = int(request.args.get("page", "1"))
     encoded = request.args.get("encoded", "false").lower()
     compact = request.args.get("compact", "true").lower()
 
-    page = max(page, 1) - 1
-    
-    do_compressed = None if compact == "true" else 4
-    do_ensure_ascii = encoded == "true"
-
     token_validity = is_token_valid(token)
     if not token_validity:
         return "Invalid token", 401
 
+    page = max(page, 1) - 1
+    
+    do_compressed = None if compact == "true" else 4
+    do_ensure_ascii = encoded == "true"
+    
+    crawl_date = crawl[:-3]
+    crawl_clock = crawl[-2:]
+    
     query = """
         select
             avlInsertionDate, 
@@ -328,8 +334,12 @@ def availability_view():
         FROM tblAvailabilityInfo
         JOIN  tblRooms on avl_romID = romID
         JOIN  tblHotels on rom_htlID = htlID
-        WHERE  (ISNULL(%s) OR htlEnName = %s OR htlFaName = %s)  
+        WHERE  (ISNULL(%s) OR htlUUID = %s)
+            AND  (ISNULL(%s) OR htlFrom = %s)
+            AND  (ISNULL(%s) OR htlEnName = %s OR htlFaName = %s)  
             AND  (ISNULL(%s) OR htlCity =%s)  
+            AND  (ISNULL(%s) OR alrCrawlClock = %s)
+            AND  (ISNULL(%s) OR DATE(alrDateTime) = %s)
             AND  avlDate >= IFNULL(%s, DATE_SUB(NOW(), INTERVAL 7 DAY)) 
             AND  avlDate <= IFNULL(%s,DATE_ADD(IFNULL(%s, NOW()), INTERVAL 7 DAY))
         ORDER BY avlDate
@@ -337,7 +347,11 @@ def availability_view():
     """
     data = [
         hotel_UUID, hotel_UUID, hotel_UUID,
+        site_from, site_from,
+        hotel_name, hotel_name, hotel_name,
         city_UUID, city_UUID,
+        crawl_clock, crawl_clock,
+        crawl_date, crawl_date,
         date_from, date_to, date_from,
         QUERY_RESULT_LIMIT, QUERY_RESULT_LIMIT*page
     ]
