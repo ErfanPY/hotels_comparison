@@ -43,22 +43,22 @@ if not TO_SCRAPE_CITIES:
 else:
     TO_SCRAPE_CITIES = [city.strip() for city in TO_SCRAPE_CITIES.split(',') if city.strip()]
 
-START_DAY = os.environ.get("ALIBABA_START_DAY", 0)
+START_DAY_OFFSET = os.environ.get("ALIBABA_START_DAY", 0)
 scrape_stat_path = "scrape_stat/"+'-'.join(TO_SCRAPE_CITIES)
 
 if not os.path.exists("scrape_stat"):
     os.mkdir("scrape_stat")
 
-if START_DAY == 0 and os.path.exists(scrape_stat_path):
+if START_DAY_OFFSET == 0 and os.path.exists(scrape_stat_path):
     with open(scrape_stat_path) as f:
-        START_DAY = int(f.readline().strip())
+        START_DAY_OFFSET = int(f.readline().strip())
 
 SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME"))
 
 
 def main(proxy_host:str=None, proxy_port:int=None):
 
-    for day_offset in range(START_DAY, 30):
+    for day_offset in range(START_DAY_OFFSET, 30):
         for city_name in TO_SCRAPE_CITIES:
             hotels_counter = 0
             city_id = city_ids[city_name]
