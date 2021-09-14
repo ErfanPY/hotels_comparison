@@ -238,19 +238,34 @@ def alerts_view():
     with get_db_connection() as conn:
         database_result = custom(query_string=query, data=data, conn=conn)
     
-    result_data = []
+    result_data = group_alerts(database_result)
         
+    response = app.response_class(
+        response=json.dumps(
+            result_data,
+            ensure_ascii=do_ensure_ascii,
+            indent=do_compressed,
+        ),
+        status=200,
+        mimetype='application/json',
+    )
+    return response
+
+
+def group_alerts(database_result):
+    result_data = []
     for alert in database_result:
+        alert_data =  {
+            "date": alert['alrOnDate'].strftime("%Y-%m-%d"),
+            "crawlStartTime": alert['alrDateTime'].strftime("%Y-%m-%d"),
+            "alerts": [],
+            # "uid": alert['alrRoomUUID'],
+            # "type": type_abrv_to_complete[alert['alrType']],
+        }
+
         alibaba_room_id = alert['alrA_romID']
         snapptrip_room_id = alert['alrS_romID']
 
-        alert_data =  {
-            "date": alert['alrOnDate'].strftime("%Y-%m-%d"),
-            "crawlStartTime": alert['alrOnDate'].strftime("%Y-%m-%d"),
-            "uid": alert['alrRoomUUID'],
-            "type": type_abrv_to_complete[alert['alrType']],
-        }
-        
         alrInfo = json.loads(alert['alrInfo'])
 
         if alert['alrType'] == "R":
@@ -283,17 +298,7 @@ def alerts_view():
         
         alert_data['info'] = alert_info
         result_data.append(alert_data)
-        
-    response = app.response_class(
-        response=json.dumps(
-            result_data,
-            ensure_ascii=do_ensure_ascii,
-            indent=do_compressed,
-        ),
-        status=200,
-        mimetype='application/json',
-    )
-    return response
+    return result_data
 
 
 @app.route('/info')
@@ -313,7 +318,7 @@ def availability_view():
 
     token_validity = is_token_valid(token)
     if not token_validity:
-        return "Invalid token", 401
+        abort(401, "Invalid token")
 
     page = max(page, 1) - 1
     
