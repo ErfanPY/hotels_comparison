@@ -2,6 +2,7 @@
 from flask import Flask, json, request, abort
 
 from .db_util import custom, get_db_connection, select, select_all
+from .parse_data_utils import *
 
 en_cities = {
     'تهران': 'tehran',
@@ -166,6 +167,7 @@ def alerts_view():
     page = int(request.args.get("page", "1")) - 1
     encoded = request.args.get("encoded", "false").lower()
     compact = request.args.get("compact", "true").lower()
+    verbose = request.args.get("verbose", "false").lower() == "true"
     
     
     if not token:
@@ -198,14 +200,23 @@ def alerts_view():
             alrRoomUUID,
             alrType,
             alrOnDate,
+            alrCrawlTime,
+            alrDateTime,
             alrA_romID,
             alrS_romID,
-            alrInfo
+            alrInfo,
+            A.romName as `aName`,
+            S.romName as `sName`,
+            htlFaName,
+            htlEnName,
+            htlCity,
+            htlUUID
         FROM tblAlert 
         LEFT JOIN tblRooms A 
         ON A.romID = alrA_romID
         LEFT JOIN tblRooms S
-        ON S.romID = alrS_romID 
+        ON S.romID = alrS_romID
+        
         JOIN tblHotels ON htlID = IFNULL(A.rom_htlID, S.rom_htlID)
         WHERE  (ISNULL(%s) OR alrType = %s)
             AND  (ISNULL(%s) OR htlFrom = %s)
@@ -238,7 +249,7 @@ def alerts_view():
     with get_db_connection() as conn:
         database_result = custom(query_string=query, data=data, conn=conn)
     
-    result_data = group_alerts(database_result)
+    result_data = group_alerts(database_result, verbose=verbose)
         
     response = app.response_class(
         response=json.dumps(
@@ -250,55 +261,6 @@ def alerts_view():
         mimetype='application/json',
     )
     return response
-
-
-def group_alerts(database_result):
-    result_data = []
-    for alert in database_result:
-        alert_data =  {
-            "date": alert['alrOnDate'].strftime("%Y-%m-%d"),
-            "crawlStartTime": alert['alrDateTime'].strftime("%Y-%m-%d"),
-            "alerts": [],
-            # "uid": alert['alrRoomUUID'],
-            # "type": type_abrv_to_complete[alert['alrType']],
-        }
-
-        alibaba_room_id = alert['alrA_romID']
-        snapptrip_room_id = alert['alrS_romID']
-
-        alrInfo = json.loads(alert['alrInfo'])
-
-        if alert['alrType'] == "R":
-            reserved_room_site = "alibaba" if str(snapptrip_room_id) in alrInfo.keys() else "snapptrip"
-            alert_info = "reserved on " + reserved_room_site
-        elif alert['alrType'] == "P":
-            alibaba_base_price = alrInfo['base_price'][str(alibaba_room_id)]
-            snapptrip_base_price = alrInfo['base_price'][str(snapptrip_room_id)]
-            base_price_diff = abs(alibaba_base_price - snapptrip_base_price)
-
-            alibaba_discount_price = alrInfo['discount_price'][str(alibaba_room_id)]
-            snapptrip_discount_price = alrInfo['discount_price'][str(snapptrip_room_id)]
-            discount_price_diff = abs(alibaba_discount_price - snapptrip_discount_price)
-
-            if base_price_diff < (alibaba_base_price / 50) or discount_price_diff < (alibaba_discount_price / 50):
-                continue
-            
-            alert_info = {
-                "alibaba":{
-                    "base_price":alibaba_base_price,
-                    "discount_price":alibaba_discount_price,
-                    "discount_amount":alibaba_base_price-alibaba_discount_price,
-                },
-                "snapptrip":{
-                    "base_price":snapptrip_base_price,
-                    "discount_price":snapptrip_discount_price,
-                    "discount_amount":snapptrip_base_price-snapptrip_discount_price,
-                },
-            }
-        
-        alert_data['info'] = alert_info
-        result_data.append(alert_data)
-    return result_data
 
 
 @app.route('/info')
@@ -334,7 +296,8 @@ def availability_view():
             avlBasePrice, 
             avlDiscountPrice, 
             avlDate,
-            htlFaName, htlEnName, htlCity, htlFrom,
+            avlCrawlTime,
+            htlFaName, htlEnName, htlCity, htlFrom, htlUUID,
             romName, romMealPlan
         FROM tblAvailabilityInfo
         JOIN  tblRooms on avl_romID = romID
@@ -364,7 +327,7 @@ def availability_view():
     with get_db_connection() as conn:
         database_result = custom(query_string=query+";", data=data, conn=conn)
 
-    result_data = mgroupby(database_result)
+    result_data = group_infos(database_result)
 
     response = app.response_class(
         response=json.dumps(
@@ -449,90 +412,6 @@ def is_token_valid(token):
     if token_data and token_data['tokSatatus'] == "A":
         return True
     return False
-
-
-def mgroupby(iterator):
-    date_key_index = {}
-    city_key_index = {}
-    hotel_key_index = {}
-    site_key_index = {}
-
-    groups = {}
-    for item in iterator:
-        hotel_site = 'alibaba' if item['htlFrom'].lower() == "a" else "snapptrip"
-        key_date = str(item['avlInsertionDate'])
-        key_city = item['htlCity']+"_/_"+key_date
-        key_hotel = item['htlFaName']+"_/_"+key_city
-        key_site = item['htlFrom']+"_/_"+key_hotel
-
-        index_date = date_key_index.get(key_date)
-        index_city = city_key_index.get(key_city)
-        index_hotel = hotel_key_index.get(key_hotel)
-        index_site = site_key_index.get(key_site)
-
-        # if index_date is None:
-        #     groups.append({
-        #         'date': key_date,
-        #         'cities': {}
-        #     })
-            
-        #     index_date = len(groups)-1
-        #     date_key_index[key_date] = index_date
-
- 
-        # { "CITY_NAME": {"Alibaba":{"HotelName":[{roomInfoObject_1}, {roomInfoObject_2}, ...]}}}
-        if groups.get(key_date) is None:
-            groups[key_date] = {}
-
-        if groups[key_date].get(item['htlCity']) is None:
-            groups[key_date][item['htlCity']] = {}
-
-        if groups[key_date][item['htlCity']].get(hotel_site) is None:
-            groups[key_date][item['htlCity']][hotel_site] = {}
-
-        if groups[key_date][item['htlCity']][hotel_site].get(item['htlFaName']) is None:
-            groups[key_date][item['htlCity']][hotel_site][item['htlFaName']] = []
-
-        groups[key_date][item['htlCity']][hotel_site][item['htlFaName']].append(
-            {
-                "additives":item['romMealPlan'],
-                "base_price":item['avlBasePrice'],
-                "insertion_date":item['avlInsertionDate'],
-                "discount_price":item['avlDiscountPrice'],
-                "name":item['romName'],
-            }
-        )
-
-        # if index_hotel is None:
-        #     groups[key_date][index_city]['hotels'].append({
-        #         "hotel": key_hotel.split('_/_')[0],
-        #         'sites': []
-        #     })
-            
-        #     index_hotel = len(groups[key_date][index_city]['hotels'])-1
-        #     hotel_key_index[key_hotel] = index_hotel
-    
-        # if index_site is None:
-        #     groups[key_date][index_city]['hotels'][index_hotel]['sites'].append({
-        #         "site": "alibaba" if key_site[0]=="A" else "snapptrip",
-        #         'rooms': []
-        #     })
-            
-        #     index_site = len(groups[key_date][index_city]['hotels'][index_hotel]['sites'])-1
-        #     site_key_index[key_site] = index_site
-
-
-        # groups[key_date][index_city]['hotels'][index_hotel]['sites'][index_site]['rooms'].append(
-        #     {
-        #         "additives":item['romMealPlan'],
-        #         "base_price":item['avlBasePrice'],
-        #         "insertion_date":item['avlInsertionDate'],
-        #         "discount_price":item['avlDiscountPrice'],
-        #         "name":item['romName'],
-        #     }
-        # )
-
-    return groups
 
 
 if __name__ == '__main__':
