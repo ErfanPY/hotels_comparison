@@ -33,7 +33,7 @@ def main():
     
     rooms_data_query = """
             SELECT romUUID, avlInsertionDate, avlDate, romID, avlBasePrice,
-                avlDiscountPrice, romName, rom_htlID, htlFrom, romMealPlan
+                avlDiscountPrice, romName, rom_htlID, htlFrom, romMealPlan, romAdditives
             FROM tblRooms
             INNER JOIN tblAvailabilityInfo ON romID = avl_romID
             INNER JOIN tblHotels ON htlID = rom_htlID 
@@ -93,49 +93,86 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
             snapptrip_room['romID']: snapptrip_room['avlDiscountPrice'],
         }
     }
+    romUUID = alibaba_room['romUUID']
+
     if not alibaba_room['avlBasePrice'] == snapptrip_room['avlBasePrice']:
 
         alrType = 'P'
         alrInfo = prices_alrInfo
-        
-    elif not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
+       
+        insert_select_id(table='tblAlert', key_value={
+            "alrRoomUUID": romUUID, 
+            "alrOnDate": alibaba_room['avlDate'],
+            "alrType": alrType,
+            "alrA_romID": alibaba_room['romID'],
+            "alrS_romID": snapptrip_room['romID'],
+            'alrInfo': json.dumps(alrInfo)
+        }, id_field=None, identifier_condition=None, conn=conn)
+    
+    if not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
         alrType = 'D'
         alrInfo = prices_alrInfo
 
-    elif not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
+        insert_select_id(table='tblAlert', key_value={
+            "alrRoomUUID": romUUID, 
+            "alrOnDate": alibaba_room['avlDate'],
+            "alrType": alrType,
+            "alrA_romID": alibaba_room['romID'],
+            "alrS_romID": snapptrip_room['romID'],
+            'alrInfo': json.dumps(alrInfo)
+        }, id_field=None, identifier_condition=None, conn=conn)
+
+    if not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
         alrType = 'O'
         alrInfo = {
             alibaba_room['romID']: alibaba_room['romMealPlan'],
             snapptrip_room['romID']: snapptrip_room['romMealPlan'],
         }
-    else:
-        return
-    
-    romUUID = alibaba_room['romUUID']
 
+        insert_select_id(table='tblAlert', key_value={
+            "alrRoomUUID": romUUID, 
+            "alrOnDate": alibaba_room['avlDate'],
+            "alrType": alrType,
+            "alrA_romID": alibaba_room['romID'],
+            "alrS_romID": snapptrip_room['romID'],
+            'alrInfo': json.dumps(alrInfo)
+        }, id_field=None, identifier_condition=None, conn=conn)
 
-    insert_select_id(table='tblAlert', key_value={
-        "alrRoomUUID": romUUID, 
-        "alrOnDate": alibaba_room['avlDate'],
-        "alrType": alrType,
-        "alrA_romID": alibaba_room['romID'],
-        "alrS_romID": snapptrip_room['romID'],
-        'alrInfo': json.dumps(alrInfo)
-    }, id_field=None, identifier_condition=None, conn=conn)
+    set_a = set(alibaba_room['romAdditives'])
+    set_b = set(snapptrip_room['romAdditives'])
 
+    diff_a = set_a-set_b
+    diff_b = set_b-set_a
+
+    if diff_a or diff_b:
+        alrType = 'O'
+        alrInfo = {
+            alibaba_room['romID']: list(diff_a),
+            snapptrip_room['romID']: list(diff_b),
+        }
+
+        insert_select_id(table='tblAlert', key_value={
+            "alrRoomUUID": romUUID, 
+            "alrOnDate": alibaba_room['avlDate'],
+            "alrType": alrType,
+            "alrA_romID": alibaba_room['romID'],
+            "alrS_romID": snapptrip_room['romID'],
+            'alrInfo': json.dumps(alrInfo)
+        }, id_field=None, identifier_condition=None, conn=conn)
+        
 
 def add_single_available_rooms(rooms, conn):
     for room in rooms:
         romUUID = room['romUUID']
 
-        if romUUID == " ":
-            singlity_msg = "No mathcing UUID on other hotel."
-        else:
-            singlity_msg = "Reserved on other hotel in this date."
-
         alrInfo = {
-            room['romID']: singlity_msg
+            'base_price':{
+                room['romID']: room['avlBasePrice'],
+            },
+            'discount_price':{
+                room['romID']: room['avlBasePrice'],
             }
+        }
 
         # TODO
         try:
