@@ -23,6 +23,7 @@ en_cities = {
     'بوشهر': 'bushehr',
     'کرمان': 'kerman',
     'ارومیه': 'urmia',
+    'فیک': 'fake',
 }
 
 cities_UUID_name = {city_UUID: city_name for city_name,
@@ -57,7 +58,12 @@ def list_view():
     token_validity = is_token_valid(token)
     if not token_validity:
         return "Invalid token", 401
-
+    
+    if not site_from is None and site_from == "alibaba":
+        site_from = "A"
+    if not site_from is None and site_from == "snapptrip":
+        site_from = "S"
+    
     if list_type == "cities":
         query = "select htlCity from tblHotels Group BY htlCity"
         data = []
@@ -78,6 +84,7 @@ def list_view():
             AND  (ISNULL(%s) OR htlUUID = %s)
             AND  (ISNULL(%s) OR htlFrom = %s)
             AND  (ISNULL(%s) OR htlFaName = %s OR htlEnName = %s)
+            
             LIMIT %s OFFSET %s 
         """
         data = [
@@ -175,6 +182,12 @@ def alerts_view():
     token_validity = is_token_valid(token)
     if not token_validity:
         return abort(401, "Invalid token")
+        
+    if not site_from is None and site_from == "alibaba":
+        site_from = "A"
+    if not site_from is None and site_from == "snapptrip":
+        site_from = "S"
+    
     if not alert_type in ["reservation", "price"]:
         abort(400, "Type should be one of ( reservation / price)")
     if not city_UUID and not hotel_UUID:
@@ -185,9 +198,15 @@ def alerts_view():
 
     alert_type_abrv = alert_type[0].upper()
     
-    crawl_date = crawl[:-3]
-    crawl_clock = crawl[-2:]
-    
+    if crawl is None:
+        crawl_clock_start = None
+        crawl_clock_end = None
+    else:
+        crawl_date = crawl[:-3]
+        crawl_range_start, crawl_range_end = ("12:00", "24:00") if crawl[-2:].lower() == "pm" else ("00:00", "12:00")
+        crawl_clock_start = f"{crawl_date} {crawl_range_start}"
+        crawl_clock_end = f"{crawl_date} {crawl_range_end}"
+
     type_abrv_to_complete = {
         'R': 'reservation',
         'P': 'price',
@@ -217,15 +236,14 @@ def alerts_view():
         LEFT JOIN tblRooms S
         ON S.romID = alrS_romID
         
-        JOIN tblHotels ON htlID = IFNULL(A.rom_htlID, S.rom_htlID)
+        JOIN tblHotels ON (htlID = S.rom_htlID or htlID = A.rom_htlID)
         WHERE  (ISNULL(%s) OR alrType = %s)
             AND  (ISNULL(%s) OR htlFrom = %s)
             AND  (ISNULL(%s) OR htlCity = %s) 
             AND  (ISNULL(%s) OR htlUUID = %s)
             AND  (ISNULL(%s) OR htlFaName = %s OR htlEnName = %s)
-            AND  (ISNULL(%s) OR romUUID = %s)
-            AND  (ISNULL(%s) OR alrCrawlClock = %s)
-            AND  (ISNULL(%s) OR DATE(alrDateTime) = %s)
+            AND  (ISNULL(%s) OR A.romUUID = %s OR S.romUUID = %s)
+            AND  (ISNULL(%s) OR (%s <= alrCrawlTime AND alrCrawlTime <= %s))
             AND  alrOnDate >= IFNULL(%s, DATE_SUB(NOW(), INTERVAL 7 DAY)) 
             AND  alrOnDate <= IFNULL(%s,DATE_ADD(IFNULL(%s, NOW()), INTERVAL 7 DAY))
         ORDER BY alrOnDate
@@ -238,9 +256,8 @@ def alerts_view():
         city_UUID, city_UUID,
         hotel_UUID, hotel_UUID,
         hotel_name, hotel_name, hotel_name,
-        room_uuid, room_uuid,
-        crawl_clock, crawl_clock,
-        crawl_date, crawl_date,
+        room_uuid, room_uuid, room_uuid,
+        crawl_clock_start, crawl_clock_start, crawl_clock_end,
         date_from, date_to, date_from,
         QUERY_RESULT_LIMIT, QUERY_RESULT_LIMIT*page
     ]
@@ -281,14 +298,25 @@ def availability_view():
     token_validity = is_token_valid(token)
     if not token_validity:
         abort(401, "Invalid token")
-
+        
+    if not site_from is None and site_from == "alibaba":
+        site_from = "A"
+    if not site_from is None and site_from == "snapptrip":
+        site_from = "S"
+    
     page = max(page, 1) - 1
     
     do_compressed = None if compact == "true" else 4
     do_ensure_ascii = encoded == "true"
     
-    crawl_date = crawl[:-3]
-    crawl_clock = crawl[-2:]
+    if crawl is None:
+        crawl_clock_start = None
+        crawl_clock_end = None
+    else:
+        crawl_date = crawl[:-3]
+        crawl_range_start, crawl_range_end = ("12:00", "24:00") if crawl[-2:].lower() == "pm" else ("00:00", "12:00")
+        crawl_clock_start = f"{crawl_date} {crawl_range_start}"
+        crawl_clock_end = f"{crawl_date} {crawl_range_end}"
     
     query = """
         select
@@ -298,7 +326,7 @@ def availability_view():
             avlDate,
             avlCrawlTime,
             htlFaName, htlEnName, htlCity, htlFrom, htlUUID,
-            romName, romMealPlan
+            romName, romMealPlan, romUUID
         FROM tblAvailabilityInfo
         JOIN  tblRooms on avl_romID = romID
         JOIN  tblHotels on rom_htlID = htlID
@@ -306,20 +334,18 @@ def availability_view():
             AND  (ISNULL(%s) OR htlFrom = %s)
             AND  (ISNULL(%s) OR htlEnName = %s OR htlFaName = %s)  
             AND  (ISNULL(%s) OR htlCity =%s)  
-            AND  (ISNULL(%s) OR alrCrawlClock = %s)
-            AND  (ISNULL(%s) OR DATE(alrDateTime) = %s)
+            AND  (ISNULL(%s) OR (%s <= avlCrawlTime AND avlCrawlTime <= %s))
             AND  avlDate >= IFNULL(%s, DATE_SUB(NOW(), INTERVAL 7 DAY)) 
             AND  avlDate <= IFNULL(%s,DATE_ADD(IFNULL(%s, NOW()), INTERVAL 7 DAY))
         ORDER BY avlDate
         LIMIT %s OFFSET %s
     """
     data = [
-        hotel_UUID, hotel_UUID, hotel_UUID,
+        hotel_UUID, hotel_UUID,
         site_from, site_from,
         hotel_name, hotel_name, hotel_name,
         city_UUID, city_UUID,
-        crawl_clock, crawl_clock,
-        crawl_date, crawl_date,
+        crawl_clock_start, crawl_clock_start, crawl_clock_end,
         date_from, date_to, date_from,
         QUERY_RESULT_LIMIT, QUERY_RESULT_LIMIT*page
     ]
