@@ -90,7 +90,7 @@ def verbose_alerts_to_dict(alerts):
             })
             city_index[alert['htlCity']] = i
 
-        result[i][alert['htlCity']][alert['htlUUID']].update(alert_to_dict(alert))
+        result[i][alert['htlCity']][alert['htlEnName']].update(alert_to_dict(alert))
 
     return result
             
@@ -103,7 +103,7 @@ def group_infos(infos):
     for info in infos:
         dc_key = f'{info["avlDate"]} {info["avlCrawlTime"]}'
         i = dc_index.get(dc_key)
-        site, other_site = "alibaba", "snapptrip" if info['htlFrom'][0].lower() == "a" else "snapptrip", "alibaba"
+        site = "alibaba" if info['htlFrom'][0].lower() == "a" else "snapptrip"
         
         if i is None:
             i = len(groups)
@@ -111,41 +111,31 @@ def group_infos(infos):
             groups.append(nested_dict())
             groups[i]["date"] = str(info["avlDate"])
             groups[i]["crawlStartTime"] = str(info["avlCrawlTime"])
-            groups[i][info['htlCity']][info['htlUUID']][site] = info_to_site(info)
-            groups[i][info['htlCity']][info['htlUUID']][other_site] = { 
-                "lowest-price": {
-                    "amount": None,
-                    "room-name": None,
-                    "room-uid": None
-                },
-                "room-count": 0,
-                "hotel": {
-                    "fa": None,
-                    "en": None
-                }
-            }
+            groups[i][info['htlCity']][info['htlEnName']]["hotel-uid"] = info['htlUUID']
+            groups[i][info['htlCity']][info['htlEnName']][site] = info_to_site(info)
             
         else:
-            prev_hotel = groups[i][info['htlCity']][info['htlUUID']].get(site)
-            if prev_hotel["room-count"] == 0:
-                groups[i][info['htlCity']][info['htlUUID']][site] = info_to_site(info)
+            prev_hotel = groups[i][info['htlCity']][info['htlEnName']].get(site)
+            if prev_hotel is None or not "lowest-price" in prev_hotel.keys():
+                groups[i][info['htlCity']][info['htlEnName']][site] = info_to_site(info)
             else:
-                low_p = groups[i][info['htlCity']][info['htlUUID']][site]['lowest-price']['amount']
-                count = groups[i][info['htlCity']][info['htlUUID']][site]['room-count']
+                low_p = groups[i][info['htlCity']][info['htlEnName']][site]['lowest-price']['amount']
+                room_count = groups[i][info['htlCity']][info['htlEnName']][site]['room-count']
                 if info['avlDiscountPrice'] < low_p:
-                    groups[i][info['htlCity']][info['htlUUID']][site] = info_to_site(info)
-                groups[i][info['htlCity']][info['htlUUID']][site]['room-count'] = count+1
+                    groups[i][info['htlCity']][info['htlEnName']][site] = info_to_site(info, room_count)
+                else:
+                    groups[i][info['htlCity']][info['htlEnName']][site]['room-count'] = room_count+1
     return groups
 
 
-def info_to_site(info):
+def info_to_site(info, room_count=0):
     return { 
-        "lowest-price": {#TODO
+        "lowest-price": {
             "amount": info['avlDiscountPrice'],
             "room-name": info['romName'],
             "room-uid": info["romUUID"]
         },
-        "room-count": 1, #TODO
+        "room-count": room_count+1,
         "hotel": {
             "fa": info["htlFaName"],
             "en": info["htlEnName"]
