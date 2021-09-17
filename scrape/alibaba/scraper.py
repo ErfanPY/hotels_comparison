@@ -54,6 +54,7 @@ if START_DAY_OFFSET == 0 and os.path.exists(scrape_stat_path):
         START_DAY_OFFSET = int(f.readline().strip())
 
 SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME"))
+CRAWL_START_DATETIME = datetime.now()
 
 
 def main(proxy_host:str=None, proxy_port:int=None):
@@ -249,6 +250,7 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
             key_value={
                 "avl_romID": room_id,
                 "avlDate": date_from,
+                "avlCrawlTime": CRAWL_START_DATETIME,
                 "avlInsertionDate": now,
                 "avlBasePrice": room['boardPrice'],
                 "avlDiscountPrice": room['price']

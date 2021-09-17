@@ -51,6 +51,8 @@ else:
 SLEEP_TIME = int(os.environ.get("SNAPPTRIP_SCRAPPER_SLEEP_TIME", "4"))
 
 BASE_URL = 'https://www.snapptrip.com/'
+CRAWL_START_DATETIME = datetime.now()
+
 
 def main(proxy_host:str=None, proxy_port:int=None):
     # socks.set_default_proxy(proxy_host, proxy_port)
@@ -93,7 +95,7 @@ def get_city_hotels(city_name, day_offset=0):
             total_hotels_counter += 1
 
         next_page_div = search_page_soup.select_one('.pagination-next')
-        if next_page_div is None:
+        if not next_page_div is None:
             next_page_url = next_page_div.select_one('a').get('href')
             if next_page_url and not next_page_url == "/":
                 to_scrape_url = urljoin(BASE_URL, next_page_url)
@@ -258,9 +260,18 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
             breakfast = room.select_one('.breakfast')
             meal_plan = 'RO' if 'disabled' in breakfast.attrs['class'] else 'BB'
 
+            additives = []
+            no_extra_bed = room.select_one(".extra-bed.disabled")
+            if no_extra_bed is None:
+                additives.append("extra-bed")
+            no_breakfast = room.select_one(".breakfast.disabled")
+            if no_extra_bed is None:
+                additives.append("breakfast")
+
             room_id = insert_select_id(
                 table='tblRooms',
                 key_value={
+                    "romAdditives": json.dumps(additives),
                     "rom_htlID": hotel_id,
                     "romName": room_name,
                     "romType": get_room_types(room_name),
@@ -297,6 +308,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                         key_value={
                             "avl_romID": room_id,
                             "avlDate": day['date'],
+                            "avlCrawlTime": CRAWL_START_DATETIME,
                             "avlInsertionDate": today,
                             "avlBasePrice": day['prices']['local_price']*10,
                             "avlDiscountPrice": day['prices']['local_price_off']*10
