@@ -22,7 +22,7 @@ from scrape.snapp_trip.scraper import (
     en_fa_cities
 )
 
-from scrape.compare_rooms import main as compare_scrapes
+from scrape.compare_rooms import main as compare_scrapes, compare_rooms
 
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,16 @@ def main():
             htlFaName_htlUUID = get_htlFaName_htlUUID(city_name)
 
             uuid_hotels = defaultdict(list)
+            
+            counter = 0
+            alibaba_hotels = a_get_city_hotels(city_name, day_offset)
+            for hotel in alibaba_hotels:
+                hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
+                uuid_hotels[hotel_uuid].append(hotel)
+                counter += 1
 
+            logger.info(f"Alibaba: {counter}")
+            
             counter = 0
             snapptrip_hotels = s_get_city_hotels(en_fa_cities[city_name], day_offset)
             for hotel in snapptrip_hotels:
@@ -65,27 +74,22 @@ def main():
             
             logger.info(f"Snapptrip: {counter}")
             
-            counter = 0
-            alibaba_hotels = a_get_city_hotels(city_name, day_offset)
-            for hotel in alibaba_hotels:
-                hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
-                uuid_hotels[hotel_uuid].append(hotel)
-                counter += 1
-
-            logger.info(f"Alibaba: {counter}")
-
             len_uuid_hotels = len(uuid_hotels)
             for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
                 if uuid is None:
                     continue
                 logger.info(f"{uuid}: {i}/{len_uuid_hotels}")
 
+                site_rooms = {}
+
                 len_hotels = len(hotels)
                 for j, hotel in enumerate(hotels):
                     logger.info(f" - {hotel['id']}: {j}/{len_hotels}")
 
-                    scrape_hotel(hotel)
+                    rooms = scrape_hotel(hotel)
+                    site_rooms[hotel['hotel_from']] = rooms
 
+                compare_hotel_rooms(**site_rooms)
             # This section of code added to scrape hotels with out uuid
             # It iterate through non uuid hotels list and scrape 
             # one hotel from left side of list one hotel from right side of list
@@ -107,8 +111,6 @@ def main():
 
     with open(scrape_stat_path, 'w') as f:
         f.write("0")
-
-    compare_scrapes()
 
 
 def get_htlFaName_htlUUID(city):
@@ -188,7 +190,7 @@ def scrape_hotel(hotel: dict) -> int:
     """
     if hotel['hotel_from'] == "alibaba":
             
-        alibaba_scrape_hotel(
+        s_id, rooms = alibaba_scrape_hotel(
             hotel['city'],
             hotel,
             hotel['session_id'],
@@ -197,12 +199,30 @@ def scrape_hotel(hotel: dict) -> int:
         )
 
     else:
-        snapptrip_scrape_hotel(
+        rooms = snapptrip_scrape_hotel(
             hotel['url'],
             hotel['faName'],
             hotel['id'],
             hotel['city']
         )
+    
+    return rooms
+
+
+def compare_hotel_rooms(alibaba, snapptrip):
+    uuidـrooms = {}
+
+    uuid_room = defaultdict(list)
+
+    for a in alibaba:
+        uuid_room[a['room_UUID']].append(a)
+
+    for s in snapptrip:
+        uuid_room[s['room_UUID']].append(s)
+
+    for uuid, rooms in uuidـrooms.items():
+        if not uuid is None:
+            compare_rooms(rooms[0], rooms[-1])
 
 
 if __name__ == "__main__":
