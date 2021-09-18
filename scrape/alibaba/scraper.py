@@ -153,7 +153,6 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
     Returns:
         None
     """
-    rooms_counter = 0
 
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
@@ -195,7 +194,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
             final_result = hotel_rooms_data['result']['finalResult']
             time.sleep(SLEEP_TIME)
 
-
+    rooms_counter = 0
     for room_type in rooms:
 
         room_type_id = room_type["id"]
