@@ -47,28 +47,60 @@ def main():
         for city_name in TO_SCRAPE_CITIES:
             logger.info(f"City: {city_name}")
 
+            htlFaName_htlUUID = get_htlFaName_htlUUID(city_name)
+
             uuid_hotels = defaultdict(list)
 
+            counter = 0
             snapptrip_hotels = s_get_city_hotels(en_fa_cities[city_name], day_offset)
             for hotel in snapptrip_hotels:
-                hotel_uuid = hotel_to_uuid(hotel)
-
+                hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
+                counter += 1
+                
                 if hotel_uuid and hotel_uuid in visited_snapp_hotel:
                     continue
 
                 uuid_hotels[hotel_uuid].append(hotel)
                 visited_snapp_hotel.append(hotel_uuid)
             
+            logger.info(f"Snapptrip: {counter}")
+            
+            counter = 0
             alibaba_hotels = a_get_city_hotels(city_name, day_offset)
             for hotel in alibaba_hotels:
-                uuid_hotels[hotel_to_uuid(hotel)].append(hotel)
-                
-            for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
+                hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
+                uuid_hotels[hotel_uuid].append(hotel)
+                counter += 1
 
-                for hotel in hotels:
+            logger.info(f"Alibaba: {counter}")
+
+            len_uuid_hotels = len(uuid_hotels)
+            for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
+                if uuid is None:
+                    continue
+                logger.info(f"{uuid}: {i}/{len_uuid_hotels}")
+
+                len_hotels = len(hotels)
+                for j, hotel in enumerate(hotels):
+                    logger.info(f" - {hotel['id']}: {j}/{len_hotels}")
+
                     scrape_hotel(hotel)
 
-                logger.info(f"Hotels: {i}/{len(uuid_hotels)}")
+            # This section of code added to scrape hotels with out uuid
+            # It iterate through non uuid hotels list and scrape 
+            # one hotel from left side of list one hotel from right side of list
+            # At the end checks if list have one hotel in middle to scrape it
+            none_uuid_hotels = uuid_hotels.get(None, [])
+            len_none_uuid = len(none_uuid_hotels)
+            for i in range(len_none_uuid//2):
+                logger.info(f" - {none_uuid_hotels[i]['id']}: {i}/{len_none_uuid}")
+                
+                scrape_hotel(none_uuid_hotels[i])
+                from_end_index = -1*(i+1)
+                scrape_hotel(none_uuid_hotels[from_end_index])
+            
+            if not len_none_uuid%2 == 0:
+                scrape_hotel(none_uuid_hotels[i+1])
 
         with open(scrape_stat_path, 'w') as f:
             f.write(str(day_offset+1))
@@ -77,6 +109,24 @@ def main():
         f.write("0")
 
     compare_scrapes()
+
+
+def get_htlFaName_htlUUID(city):
+    query = """
+        SELECT htlFaName, htlUUID from tblHotels
+        WHERE NOT htlUUID is NULL AND htlCity = %s ;
+    """
+    
+    group = {}
+
+    with get_db_connection() as conn:
+        name_uuids = custom(query, [city], conn=conn)
+    
+    for row in name_uuids:
+        #TODO may exist some rooms that have same persian name but acctualy are diffrent hotels (فردوسی)
+        group[row['htlFaName']] = row['htlUUID']
+    
+    return group
 
 
 def a_get_city_hotels(city_name: str, day_offset: int) -> list:
@@ -123,9 +173,10 @@ def hotel_to_uuid(hotel: dict) -> str:
     with get_db_connection() as conn:
         uuids = custom(query, [hotel['faName']], conn=conn)
     
-    uuid = uuids[0].get('htlUUID')
-    
-    return uuid
+    if uuids :
+        uuid = uuids[0].get('htlUUID')
+        
+        return uuid
 
 
 def scrape_hotel(hotel: dict) -> int:
