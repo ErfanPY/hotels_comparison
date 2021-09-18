@@ -309,7 +309,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                             "avl_romID": room_id,
                             "avlDate": day['date'],
                             "avlCrawlTime": CRAWL_START_DATETIME,
-                            "avlInsertionDate": today,
+                            "avlInsertionDate": datetime.now(),
                             "avlBasePrice": day['prices']['local_price']*10,
                             "avlDiscountPrice": day['prices']['local_price_off']*10
                         },
