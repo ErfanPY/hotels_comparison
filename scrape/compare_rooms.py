@@ -2,12 +2,10 @@ import json
 from scrape.db_util import custom, get_db_connection, insert_select_id
 from scrape.common_utils import mgroupby
 
-rooms_data = []
-romUUID_romIDs = {}
 
 def main():
-    global rooms_data
-    global romUUID_romIDs
+    rooms_data = []
+    romUUID_romIDs = {}
 
     single_rooms = []
     
@@ -79,7 +77,7 @@ def main():
             else:
                 print("Non handled condition, {}".format(str(htlFrom_groups)))
           
-        add_single_available_rooms(single_rooms, conn)
+        add_single_available_rooms(single_rooms, romUUID_romIDs, conn)
 
 
 def compare_rooms(alibaba_room, snapptrip_room, conn):
@@ -161,7 +159,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
         }, id_field=None, identifier_condition=None, conn=conn)
         
 
-def add_single_available_rooms(rooms, conn):
+def add_single_available_rooms(rooms, romUUID_romIDs, conn):
     for room in rooms:
         romUUID = room['romUUID']
 
