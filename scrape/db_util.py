@@ -1,4 +1,5 @@
 import os
+import time
 
 import mysql.connector
 import logging
@@ -7,14 +8,22 @@ logger = logging.getLogger(__name__)
 
 
 def get_db_connection(host=None, user=None, password=None, port=None, database=None):
-    cnx = mysql.connector.connect(
-        host     = host      or os.environ.get("MYSQL_HOST"),
-        user     = user      or os.environ.get("MYSQL_USER"),
-        password = password  or os.environ.get("MYSQL_PASSWORD"),
-        # port     = port      or os.environ.get("MYSQL_PORT"),
-        database = database  or os.environ.get("MYSQL_DATABASE")
-    )
-
+    counter = 0
+    while True:
+        try:
+            cnx = mysql.connector.connect(
+                host     = host      or os.environ.get("MYSQL_HOST"),
+                user     = user      or os.environ.get("MYSQL_USER"),
+                password = password  or os.environ.get("MYSQL_PASSWORD"),
+                # port     = port      or os.environ.get("MYSQL_PORT"),
+                database = database  or os.environ.get("MYSQL_DATABASE")
+            )
+            break
+        except Exception as e:
+            logger.error(e)
+            time.sleep(2)
+            if counter >= 10: break
+    
     return cnx
 
 
