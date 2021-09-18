@@ -42,13 +42,20 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
 
     if not id_field is None:
         identifier_string = ' AND '.join(f"{key} like '%{value}%'" for key, value in identifier_condition.items())
-        select_id_query = "SELECT {} from {} WHERE {}".format(id_field, table, identifier_string)
-        
-        curs.execute(select_id_query)
 
-        row_id = curs.fetchone()[id_field]
-        
-        return str(row_id)
+        if type(id_field) == list:
+            select_id_query = "SELECT {} from {} WHERE {}".format(", ".join(id_field), table, identifier_string)
+            curs.execute(select_id_query)
+            return curs.fetchone()
+            
+        else:
+            select_id_query = "SELECT {} from {} WHERE {}".format(id_field, table, identifier_string)
+            
+            curs.execute(select_id_query)
+
+            row_id = curs.fetchone()[id_field]
+            
+            return str(row_id)
 
 
 def custom(query_string:str, data:list=[], conn=None):
