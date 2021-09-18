@@ -21,19 +21,21 @@ def get_search_session_id(city_id, offset):
     while True:
         try:
             response = requests.post(url, data=data, timeout=5)
+
             if response.status_code == 429:
                 logger.error("Alibaba - session - Too many request")
+            elif response.status_code == 403:
+                logger.error("Alibaba - session - Forbidden")
             else:
                 break
 
         except Exception as e:
             logger.error("Alibaba - network error - err:{} - sleep_time:{}".format(e, sleep_time))
 
-            if sleep_time >= 10 :
-                return -1, -1
+            if sleep_time < 10 :
+                sleep_time += 1
 
-            sleep_time += 1
-            time.sleep(sleep_time)
+        time.sleep(sleep_time)
         
 
     while True:
@@ -44,11 +46,10 @@ def get_search_session_id(city_id, offset):
         except Exception as e:
             logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}".format(e, sleep_time))
           
-            if sleep_time >= 10 :
-                return -1, -1
+            if sleep_time < 10 :
+                sleep_time += 1
 
-            sleep_time += 1
-            time.sleep(sleep_time)
+        time.sleep(sleep_time)
 
 
 def get_search_data(session_id):
