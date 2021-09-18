@@ -197,9 +197,11 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
 
     comments_soup = hotel_soup.select('#rating-hotel')[0]
 
-    rooms_name_id = scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id)
+    rooms_name_id, rooms = scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id)
     
     add_rooms_comment(comments_soup, rooms_name_id)
+
+    return rooms
 
 
 def get_city_dated_url(city_url: str, day_offset: int = 0) -> str:
@@ -250,6 +252,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
     today = datetime.strftime(datetime.today(), '%Y-%m-%d')
 
     rooms_name_id = {}
+    res_rooms = []
 
     with get_db_connection() as conn:
         rooms_counter = 0
@@ -265,25 +268,28 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
             if no_extra_bed is None:
                 additives.append("extra-bed")
             no_breakfast = room.select_one(".breakfast.disabled")
-            if no_extra_bed is None:
+            if no_breakfast is None:
                 additives.append("breakfast")
-
-            room_id = insert_select_id(
+            room_data = {
+                "romAdditives": json.dumps(additives),
+                "rom_htlID": hotel_id,
+                "romName": room_name,
+                "romType": get_room_types(room_name),
+                'romMealPlan': meal_plan
+            }
+            roomID_and_UUID = insert_select_id(
                 table='tblRooms',
-                key_value={
-                    "romAdditives": json.dumps(additives),
-                    "rom_htlID": hotel_id,
-                    "romName": room_name,
-                    "romType": get_room_types(room_name),
-                    'romMealPlan': meal_plan
-                },
-                id_field='romID',
+ 
+                key_value=room_data,
+                id_field=['romID', 'romUUID'],
                 identifier_condition={
                     "rom_htlID": hotel_id,
                     'romName': room_name
                 },
                 conn=conn
             )
+            room_data['room_UUID'] = roomID_and_UUID['romUUID']
+            room_data['room_ID'] = roomID_and_UUID['romID']
             
             room_calender_content = get_content(
                 "https://www.snapptrip.com/shopping/{}/calendar/{}".format(
@@ -303,27 +309,31 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                     if dsicount_price > base_price:
                         base_price, dsicount_price = dsicount_price, base_price
 
+                    room_avl = {
+                        "avl_romID": roomID_and_UUID['romID'],
+                        "avlDate": day['date'],
+                        "avlCrawlTime": CRAWL_START_DATETIME,
+                        "avlInsertionDate": datetime.now(),
+                        "avlBasePrice": day['prices']['local_price']*10,
+                        "avlDiscountPrice": day['prices']['local_price_off']*10
+                    }
+
                     insert_select_id(
                         table="tblAvailabilityInfo",
-                        key_value={
-                            "avl_romID": room_id,
-                            "avlDate": day['date'],
-                            "avlCrawlTime": CRAWL_START_DATETIME,
-                            "avlInsertionDate": datetime.now(),
-                            "avlBasePrice": day['prices']['local_price']*10,
-                            "avlDiscountPrice": day['prices']['local_price_off']*10
-                        },
+                        key_value=room_avl,
                         id_field=None,
                         identifier_condition={},
                         conn=conn
                     )
-            
-            rooms_name_id[room_name]= room_id
+
+                    room_data.update(room_avl)
+                    res_rooms.append(room_data)
+            rooms_name_id[room_name]= roomID_and_UUID['romID']
             rooms_counter += 1
 
         # logger.error("Snapptrip - Hotel: {} has {} rooms.".format(hotel_id, rooms_counter))
 
-    return rooms_name_id
+    return rooms_name_id, res_rooms
 
 
 def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:

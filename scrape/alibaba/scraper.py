@@ -76,7 +76,7 @@ def main(proxy_host:str=None, proxy_port:int=None):
             for hotel in hotels_data:
                 time.sleep(SLEEP_TIME)
                 try:
-                    session_id = scrape_hotel(
+                    session_id, r = scrape_hotel(
                         city_name, hotel, session_id=session_id,
                         date_from=date_from, day_offset=day_offset
                     )
@@ -195,17 +195,22 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
             time.sleep(SLEEP_TIME)
 
     rooms_counter = 0
+    res_rooms = []
     for room_type in rooms:
 
         room_type_id = room_type["id"]
         meal_plan = room_type['mealPlan']
         for room in room_type["rooms"]:
-            save_room(room=room, hotel_id=hotel_id, date_from=date_from,
+            
+
+            room_ID, room_UUID, room_data = save_room(room=room, hotel_id=hotel_id, date_from=date_from,
                 meal_plan=meal_plan)
             rooms_counter += 1
+            
+            res_rooms.append(room_data)
 
     logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['enName'], rooms_counter))
-    return session_id
+    return session_id, res_rooms
 
 
 def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
@@ -222,16 +227,16 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
     """
 
     with get_db_connection() as conn:
-
-        room_id = insert_select_id(
+        room_data = {
+            'romName': room['name'],
+            "romType": get_room_types(room['name']),
+            'rom_htlID': hotel_id,
+            'romMealPlan': meal_plan
+        }
+        room_id_and_uuid = insert_select_id(
             table='tblRooms',
-            key_value={
-                'romName': room['name'],
-                "romType": get_room_types(room['name']),
-                'rom_htlID': hotel_id,
-                'romMealPlan': meal_plan
-            },
-            id_field='romID',
+            key_value=room_data,
+            id_field=['romID', 'romUUID'],
             identifier_condition={
                 "romName": room['name'],
                 'rom_htlID': hotel_id
@@ -243,21 +248,24 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
             room['price'], room['boardPrice'] = room['boardPrice'], room['price']
         
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
+        room_info = {
+            "avl_romID": room_id_and_uuid['romID'],
+            "avlDate": date_from,
+            "avlCrawlTime": CRAWL_START_DATETIME,
+            "avlInsertionDate": now,
+            "avlBasePrice": room['boardPrice'],
+            "avlDiscountPrice": room['price']
+        }
         insert_select_id(
             table="tblAvailabilityInfo",
-            key_value={
-                "avl_romID": room_id,
-                "avlDate": date_from,
-                "avlCrawlTime": CRAWL_START_DATETIME,
-                "avlInsertionDate": now,
-                "avlBasePrice": room['boardPrice'],
-                "avlDiscountPrice": room['price']
-            },
+            key_value=room_info,
             id_field=None,
             identifier_condition={},
             conn=conn
         )
+        room_data.update(room_info)
+
+    return room_id_and_uuid['romID'], room_id_and_uuid['romUUID'], room_data
 
 
 if __name__ == "__main__":
