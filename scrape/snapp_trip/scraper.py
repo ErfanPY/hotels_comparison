@@ -6,7 +6,7 @@ import re
 import socket
 import time
 from datetime import datetime, timedelta
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import socks
 from bs4 import BeautifulSoup
@@ -171,6 +171,7 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
     Returns:
         None
     """
+    unique_url = urljoin(hotel_url, urlparse(hotel_url).path)
 
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
@@ -179,7 +180,7 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
                 "htlFaName": hotel_name,
                 "htlEnName": "",
                 "htlCity": fa_en_cities.get(city_name, city_name),
-                "htlUrl": hotel_url,
+                "htlUrl": unique_url,
                 "htlFrom": 'S'
             },
             id_field='htlID',
