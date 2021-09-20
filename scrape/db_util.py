@@ -22,7 +22,6 @@ def get_db_connection(host=None, user=None, password=None, port=None, database=N
         except Exception as e:
             logger.error(e)
             time.sleep(2)
-            if counter >= 10: break
     
     return cnx
 
@@ -62,7 +61,7 @@ def custom(query_string:str, data:list=[], conn=None):
     curs = conn.cursor(buffered=True, dictionary=True)
 
     curs.execute(query_string, data)
-
     result = curs.fetchall()
+    conn.commit()
     
     return result
