@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import urlparse
 from urllib.request import Request, quote, urlopen
+from time import sleep
 
 from bs4 import BeautifulSoup
 
@@ -22,15 +23,19 @@ def get_content(url:str, headers:dict={}) -> bytes:
     if not "%" in url:
         url_parts = urlparse(url)
         url = url_parts._replace(path=quote(url_parts.path)).geturl()
-        
-    try:
-        req = Request(url, headers=headers)
     
-        connection = urlopen(req)
-        page_content = connection.read()
-    except Exception as e:
-        logging.error(f"Getting url failed, url: {url}, Error: {e}")
-        return -1
+    sec = 2
 
-    return page_content
+    while True:    
+        try:
+            req = Request(url, headers=headers)
+        
+            connection = urlopen(req)
+            page_content = connection.read()
+            return page_content
 
+        except Exception as e:
+            logging.error(f"Getting url failed, url: {url}, Error: {e}")
+
+        sleep(sec)
+        sec += 1
