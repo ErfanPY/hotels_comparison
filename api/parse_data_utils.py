@@ -4,25 +4,41 @@ import json
 
 def group_alerts(database_result, verbose):
     result_data = []
-    if verbose:
-        result_data = verbose_alerts_to_dict(database_result)        
-    else:
-        dc_indexs = {}
-        for alert in database_result:
-            alert['alrInfo'] = json.loads(alert['alrInfo'])
-            alert_data = alert_to_dict(alert)
+    dc_indexs = {}
+    nested_dict = lambda: defaultdict(nested_dict)
 
-            dc_key = f"{alert['alrDateTime']}-{alert['alrCrawlTime']}"
-            dc_i = dc_indexs.get(dc_key)
-            if dc_i is None:
-                dc_indexs[dc_key] = len(result_data)
+    for alert in database_result:
+        alert['alrInfo'] = json.loads(alert['alrInfo'])
+        alert_data = alert_to_dict(alert, verbose=verbose)
+
+        dc_key = f"{alert['alrDateTime'].date()}/{alert['alrCrawlTime']}"
+        dc_i = dc_indexs.get(dc_key)
+        if dc_i is None:
+            dc_indexs[dc_key] = len(result_data)
+
+            if verbose:
                 result_data.append({
                     "date": str(alert['alrDateTime'].date()),
                     "crawlStartTime": str(alert['alrCrawlTime']),
-                    "alerts": alert_data
+                    "alerts": nested_dict()
                 })
+                result_data[-1]['alerts'][alert['htlCity']][alert['htlUUID']][alert['alrRoomUUID']] = [alert_data[alert['alrRoomUUID']]]
+                # result_data[dc_i]['alerts']["CITY_UID_n"]["HOTEL_UID_n"][alert['alrRoomUUID']] = [alert_data[alert['alrRoomUUID']]]
             else:
-                result_data[dc_i]['alerts'].update(alert_data)
+                result_data.append({
+                    "date": str(alert['alrDateTime'].date()),
+                    "crawlStartTime": str(alert['alrCrawlTime']),
+                    "alerts": [alert_data]
+                })
+        else:
+            if verbose:
+                same_uuid_rooms = result_data[dc_i]['alerts'][alert['htlCity']][alert['htlUUID']].get(alert['alrRoomUUID'])
+                if same_uuid_rooms is None:
+                    result_data[dc_i]['alerts'][alert['htlCity']][alert['htlUUID']][alert['alrRoomUUID']] = [alert_data[alert['alrRoomUUID']]]
+                else:
+                    result_data[dc_i]['alerts'][alert['htlCity']][alert['htlUUID']][alert['alrRoomUUID']].append(alert_data[alert['alrRoomUUID']])
+            else:
+                result_data[dc_i]['alerts'].append(alert_data)
 
     return result_data
 
