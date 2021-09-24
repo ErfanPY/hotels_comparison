@@ -224,24 +224,32 @@ def alerts_view():
             alrA_romID,
             alrS_romID,
             alrInfo,
-            A.romName as `aName`,
-            S.romName as `sName`,
-            htlFaName,
-            htlEnName,
-            htlCity,
-            htlUUID
+            A.romName as aName,
+            S.romName as sName,
+            hA.htlID as ahtlID,
+            hS.htlID as shtlID,
+            hS.htlFaName as shtlFaName,
+            hS.htlEnName as shtlEnName,
+            hS.htlCity as shtlCity,
+            hA.htlFaName as ahtlFaName,
+            hA.htlEnName as ahtlEnName,
+            hA.htlCity as htlCity,
+            hA.htlUUID as htlUUID
+
         FROM tblAlert 
         LEFT JOIN tblRooms A 
         ON A.romID = alrA_romID
         LEFT JOIN tblRooms S
         ON S.romID = alrS_romID
         
-        JOIN tblHotels ON (htlID = S.rom_htlID or htlID = A.rom_htlID)
+        JOIN tblHotels hA ON hA.htlID = A.rom_htlID
+        JOIN tblHotels hS ON hS.htlID = S.rom_htlID
+
         WHERE  (ISNULL(%s) OR alrType = %s)
-            AND  (ISNULL(%s) OR htlFrom = %s)
-            AND  (ISNULL(%s) OR htlCity = %s) 
-            AND  (ISNULL(%s) OR htlUUID = %s)
-            AND  (ISNULL(%s) OR htlFaName = %s OR htlEnName = %s)
+            AND  (ISNULL(%s) OR hS.htlFrom = %s OR hA.htlFrom = %s)
+            AND  (ISNULL(%s) OR hA.htlCity = %s)
+            AND  (ISNULL(%s) OR hA.htlUUID = %s)
+            AND  (ISNULL(%s) OR hS.htlFaName = %s OR hS.htlEnName = %s  OR hA.htlFaName = %s OR hA.htlEnName = %s)
             AND  (ISNULL(%s) OR A.romUUID = %s OR S.romUUID = %s)
             AND  (ISNULL(%s) OR (%s <= alrCrawlTime AND alrCrawlTime <= %s))
             AND  alrOnDate >= IFNULL(%s, DATE_SUB(NOW(), INTERVAL 7 DAY)) 
@@ -252,10 +260,10 @@ def alerts_view():
 
     data = [
         alert_type_abrv, alert_type_abrv,
-        site_from, site_from,
+        site_from, site_from, site_from,
         city_UUID, city_UUID,
         hotel_UUID, hotel_UUID,
-        hotel_name, hotel_name, hotel_name,
+        hotel_name, hotel_name, hotel_name, hotel_name, hotel_name,
         room_uuid, room_uuid, room_uuid,
         crawl_clock_start, crawl_clock_start, crawl_clock_end,
         date_from, date_to, date_from,
@@ -325,6 +333,7 @@ def availability_view():
             avlDiscountPrice, 
             avlDate,
             avlCrawlTime,
+            romID,
             htlFaName, htlEnName, htlCity, htlFrom, htlUUID,
             romName, romMealPlan, romUUID
         FROM tblAvailabilityInfo
@@ -441,4 +450,4 @@ def is_token_valid(token):
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0")
+    app.run(host="127.0.0.1")
