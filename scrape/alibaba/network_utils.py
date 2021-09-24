@@ -21,7 +21,7 @@ def get_search_session_id(city_id, offset):
     sleep_time = 2
     while True:
         try:
-            response = requests.post(url, data=data, timeout=5)
+            response = requests.post(url, data=data, timeout=1000)
 
             if response.status_code == 429:
                 logger.error("Alibaba - session - Too many request")
@@ -58,7 +58,7 @@ def get_search_data(session_id):
     sleep_time = 2
     while True:
         try:
-            response = requests.post(url, data=data, timeout=5)
+            response = requests.post(url, data=data, timeout=100)
             if response.status_code == 429:
                 logger.error("Alibaba - search - Too many request")
             else:
@@ -82,7 +82,7 @@ def get_hotel_rooms_data(session_id, hotel_id):
     sleep_time = 2
     while True:
         try:
-            response = requests.post(url, data=data, timeout=5)
+            response = requests.post(url, data=data, timeout=100)
             if response.status_code == 429:
                 logger.error("Alibaba - hotels - Too many request")
             else:
