@@ -27,25 +27,32 @@ from scrape.compare_rooms import main as compare_scrapes, compare_rooms
 
 logger = logging.getLogger(__name__)
 
-START_DAY_OFFSET = os.environ.get("ALIBABA_START_DAY", 0)
+START_DAY_OFFSET = os.environ.get("SCRAPE_START_DAY", "1")
+START_DAY_OFFSET = int(START_DAY_OFFSET)
+
 scrape_stat_path = "scrape_stat/"+'-'.join(TO_SCRAPE_CITIES)
 
 if not os.path.exists("scrape_stat"):
     os.mkdir("scrape_stat")
 
-if START_DAY_OFFSET == 0 and os.path.exists(scrape_stat_path):
+if START_DAY_OFFSET == 1 and os.path.exists(scrape_stat_path):
     with open(scrape_stat_path) as f:
         START_DAY_OFFSET = int(f.readline().strip())
 
+START_DAY_OFFSET -= 1
+
+SCRAPE_END_DAY = os.environ.get("SCRAPE_END_DAY", "31")
+SCRAPE_END_DAY = int(SCRAPE_END_DAY)
+SCRAPE_END_DAY += 1
 
 def main():
     visited_snapp_hotel = []
 
-    for day_offset in range(START_DAY_OFFSET, 30):
-        logger.error(f"Day: {day_offset}")
+    for day_offset in range(START_DAY_OFFSET, SCRAPE_END_DAY):
+        logger.info(f"Day: {day_offset}")
 
         for city_name in TO_SCRAPE_CITIES:
-            logger.error(f"City: {city_name}")
+            logger.info(f"City: {city_name}")
 
             htlFaName_htlUUID = get_htlFaName_htlUUID(city_name)
 
@@ -58,7 +65,7 @@ def main():
                 uuid_hotels[hotel_uuid].append(hotel)
                 counter += 1
 
-            logger.error(f"Alibaba: {counter}")
+            logger.info(f"Alibaba: {counter}")
             
             counter = 0
             snapptrip_hotels = s_get_city_hotels(en_fa_cities[city_name], day_offset)
@@ -72,19 +79,19 @@ def main():
                 uuid_hotels[hotel_uuid].append(hotel)
                 visited_snapp_hotel.append(hotel_uuid)
             
-            logger.error(f"Snapptrip: {counter}")
+            logger.info(f"Snapptrip: {counter}")
             
             len_uuid_hotels = len(uuid_hotels)
             for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
                 if uuid is None:
                     continue
-                logger.error(f"{uuid}: {i}/{len_uuid_hotels}")
+                logger.info(f"{uuid}: {i}/{len_uuid_hotels}")
 
                 site_rooms = {}
 
                 len_hotels = len(hotels)
                 for j, hotel in enumerate(hotels):
-                    logger.error(f" - {hotel['id']}: {j}/{len_hotels}")
+                    logger.info(f" - {hotel['id']}: {j}/{len_hotels}")
 
                     rooms = scrape_hotel(hotel)
                     site_rooms[hotel['hotel_from']] = rooms
@@ -99,7 +106,7 @@ def main():
             none_uuid_hotels = uuid_hotels.get(None, [])
             len_none_uuid = len(none_uuid_hotels)
             for i in range(len_none_uuid//2):
-                logger.error(f" - {none_uuid_hotels[i]['id']}: {i}/{len_none_uuid}")
+                logger.info(f" - {none_uuid_hotels[i]['id']}: {i}/{len_none_uuid}")
                 
                 scrape_hotel(none_uuid_hotels[i])
                 from_end_index = -1*(i+1)
