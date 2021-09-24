@@ -9,7 +9,7 @@ from itertools import groupby
 from scrape.common_utils import get_room_types 
 from scrape.common_utils import mgroupby
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 env_path = find_dotenv(raise_error_if_not_found=True)
 load_dotenv(dotenv_path=env_path, verbose=True, override=True)
@@ -68,14 +68,14 @@ if DO_CHECK_ROOM_TYPES:
                             update_type_ciunt += 1
                     
                     except Exception as e:
-                        logger.error("rooms_UUID - Error: {}".format(e))
+                        logger.info("rooms_UUID - Error: {}".format(e))
                         error_count += 1
                 else:
                     no_changes_count += 1            
             else:
                 no_type_found_count += 1
 
-    logger.error("\nFound {} rooms.\n{} No type found\n{} No change made\n{} New type\n{} Update\n{} Error".format(
+    logger.info("\nFound {} rooms.\n{} No type found\n{} No change made\n{} New type\n{} Update\n{} Error".format(
         len(all_rooms),
         no_type_found_count,
         no_changes_count,

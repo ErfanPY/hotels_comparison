@@ -11,7 +11,7 @@ from scrape.common_utils import get_room_types
 
 from .network_utils import *
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 BASE_URL = "https://www.alibaba.ir/hotel/"
 
@@ -65,7 +65,7 @@ def main(proxy_host:str=None, proxy_port:int=None):
             city_id = city_ids[city_name]
             session_id, date_from = get_search_session_id(city_id, day_offset)
             
-            logger.error('Alibab - scraping city: {} on day: {}'.format(city_name, day_offset))
+            logger.info('Alibab - scraping city: {} on day: {}'.format(city_name, day_offset))
 
             if session_id == -1:
                 logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
@@ -88,7 +88,7 @@ def main(proxy_host:str=None, proxy_port:int=None):
 
                 hotels_counter += 1
             
-            logger.error("Alibaba - City: {} has {} hotels.".format(city_name, hotels_counter))
+            logger.info("Alibaba - City: {} has {} hotels.".format(city_name, hotels_counter))
 
         with open(scrape_stat_path, 'w') as f:
             f.write(str(day_offset+1))
@@ -188,7 +188,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
                 logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
                 return -1
 
-            logger.error(f"Alibaba - reset session - city: {city_id}, day: {day_offset}")
+            logger.error(f"Session Expired - city-id: {city_id}, day: {day_offset}, session: {session_id[:10]}...{session_id[-10:]}")
         else:
             rooms.extend(hotel_rooms_data['result']["rooms"])
             final_result = hotel_rooms_data['result']['finalResult']
@@ -209,7 +209,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
             
             res_rooms.append(room_data)
 
-    logger.error("Alibaba - Hotel: {} has {} rooms.".format(hotel['enName'], rooms_counter))
+    # logger.info("Alibaba - Hotel: {} has {} rooms.".format(hotel['enName'], rooms_counter))
     return session_id, res_rooms
 
 

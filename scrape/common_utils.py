@@ -1,7 +1,7 @@
 import re
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 types_abrv = [
         ['دبل', 'D'],

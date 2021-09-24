@@ -5,7 +5,7 @@ import time
 
 import requests
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 def get_search_session_id(city_id, offset):
     today_date = datetime.now() + timedelta(days=offset)
@@ -43,7 +43,7 @@ def get_search_session_id(city_id, offset):
             return response_data["result"]["sessionId"], start_date
 
         except Exception as e:
-            logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}".format(e, sleep_time))
+            logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}\nresponse={}".format(e, sleep_time, response.content))
        
         time.sleep(sleep_time)
         sleep_time += 1

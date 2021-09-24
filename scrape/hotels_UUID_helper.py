@@ -8,7 +8,7 @@ from dotenv import load_dotenv, find_dotenv
 from scrape.alibaba.scraper import city_ids
 from scrape.common_utils import mgroupby
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 env_path = find_dotenv(raise_error_if_not_found=True)
 load_dotenv(dotenv_path=env_path, verbose=True, override=True)
@@ -74,7 +74,7 @@ for city_name in city_ids.keys():
                 conn=conn
             )
 
-            # logger.error("Matchs: {}".format(len(snapp_hotels)))
+            # logger.info("Matchs: {}".format(len(snapp_hotels)))
             if len(snapp_hotels) == 0 and DO_WARN_NO_RESULT:
                 with open("hotels_UUID.txt", 'w') as f:
                     f.write("Zero result\n"+alibaba_hotel_name+'\n')

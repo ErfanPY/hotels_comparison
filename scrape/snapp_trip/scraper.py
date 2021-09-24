@@ -15,7 +15,7 @@ from scrape.common_utils import get_room_types
 
 from .network_util import get_content, get_content_make_soup, urlparse
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 fa_en_cities = {
     'تهران': 'tehran',
@@ -128,7 +128,7 @@ def scrape_hotels(city_name, hotels):
                         e
                     ))
 
-    logger.error("Snapptrip - City: {} has total {} and {} available hotels.".format(
+    logger.info("Snapptrip - City: {} has total {} and {} available hotels.".format(
                 city_name,
                 hotels_count,
                 available_hotels_counter,
@@ -332,7 +332,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
             rooms_name_id[room_name]= roomID_and_UUID['romID']
             rooms_counter += 1
 
-        # logger.error("Snapptrip - Hotel: {} has {} rooms.".format(hotel_id, rooms_counter))
+        # logger.info("Snapptrip - Hotel: {} has {} rooms.".format(hotel_id, rooms_counter))
 
     return rooms_name_id, res_rooms
 

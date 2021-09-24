@@ -32,9 +32,9 @@ LOGGING_CONFIG = {
         }
     },
     'loggers': {
-        '': {  # root logger
+        'main_logger': {
             'handlers': ['default', 'rotatingFile'],
-            'level': 'WARNING',
+            'level': 'ERROR',
             'propagate': False
         },
         '__main__': { 
