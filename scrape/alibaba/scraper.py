@@ -53,7 +53,7 @@ if START_DAY_OFFSET == 0 and os.path.exists(scrape_stat_path):
     with open(scrape_stat_path) as f:
         START_DAY_OFFSET = int(f.readline().strip())
 
-SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME"))
+SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME", "0"))
 CRAWL_START_DATETIME = datetime.now()
 
 
