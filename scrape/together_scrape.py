@@ -25,7 +25,7 @@ from scrape.snapp_trip.scraper import (
 from scrape.compare_rooms import main as compare_scrapes, compare_rooms
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 START_DAY_OFFSET = os.environ.get("SCRAPE_START_DAY", "1")
 START_DAY_OFFSET = int(START_DAY_OFFSET)
@@ -91,7 +91,7 @@ def main():
 
                 len_hotels = len(hotels)
                 for j, hotel in enumerate(hotels):
-                    logger.info(f" - {hotel['id']}: {j}/{len_hotels}")
+                    logger.info(f" UUID - {j}/{len_hotels}")
 
                     rooms = scrape_hotel(hotel)
                     site_rooms[hotel['hotel_from']] = rooms
@@ -100,13 +100,13 @@ def main():
                     compare_hotel_rooms(**site_rooms)
                 else:
                     pass
-                    # add_single_available_rooms()
+                    # add_single_available_rooms() #TODO
 
 
             none_uuid_hotels = uuid_hotels.get(None, [])
             len_none_uuid = len(none_uuid_hotels)
             for i in range(len_none_uuid//2):
-                logger.info(f" - {none_uuid_hotels[i]['id']}: {i}/{len_none_uuid}")
+                logger.info(f" no UUID - {i}/{len_none_uuid//2}")
                 
                 scrape_hotel(none_uuid_hotels[i])
                 from_end_index = -1*(i+1)

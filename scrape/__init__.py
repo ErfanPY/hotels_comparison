@@ -34,7 +34,7 @@ LOGGING_CONFIG = {
     'loggers': {
         'main_logger': {
             'handlers': ['default', 'rotatingFile'],
-            'level': 'ERROR',
+            'level': 'INFO',
             'propagate': False
         },
         '__main__': { 
