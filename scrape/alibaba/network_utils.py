@@ -43,7 +43,7 @@ def get_search_session_id(city_id, offset):
             return response_data["result"]["sessionId"], start_date
 
         except Exception as e:
-            logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}\nresponse={}".format(e, sleep_time, response.content))
+            logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}\nresponse={}".format(e, sleep_time, f"{response.content[:100]}...{response.content[100:]}"))
        
         time.sleep(sleep_time)
         sleep_time += 1
@@ -91,7 +91,7 @@ def get_hotel_rooms_data(session_id, hotel_id):
                 return response_data
 
         except Exception as e:
-            logger.error("Alibaba - rooms_data network error - err:{} - sleep_time:{}".format(e, sleep_time))
+            logger.error("Alibaba - rooms_data network error - err:{} - sleep_time:{}\n - url: {}\n - data: {}".format(e, sleep_time, url, data))
             response_data = {'result':{'finalResult':True, "rooms":[]}}
 
         time.sleep(sleep_time)
