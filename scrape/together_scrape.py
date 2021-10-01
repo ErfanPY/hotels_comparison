@@ -40,10 +40,12 @@ if START_DAY_OFFSET == 1 and os.path.exists(scrape_stat_path):
         START_DAY_OFFSET = int(f.readline().strip())
 
 START_DAY_OFFSET -= 1
+START_DAY_OFFSET = min(0, START_DAY_OFFSET)
 
 SCRAPE_END_DAY = os.environ.get("SCRAPE_END_DAY", "31")
 SCRAPE_END_DAY = int(SCRAPE_END_DAY)
 SCRAPE_END_DAY += 1
+SCRAPE_END_DAY = max(SCRAPE_END_DAY, 31)
 
 def main():
     visited_snapp_hotel = []
@@ -105,15 +107,18 @@ def main():
 
             none_uuid_hotels = uuid_hotels.get(None, [])
             len_none_uuid = len(none_uuid_hotels)
-            for i in range(len_none_uuid//2):
-                logger.info(f" no UUID - {i}/{len_none_uuid//2}")
-                
-                scrape_hotel(none_uuid_hotels[i])
-                from_end_index = -1*(i+1)
-                scrape_hotel(none_uuid_hotels[from_end_index])
             
-            if not len_none_uuid%2 == 0:
-                scrape_hotel(none_uuid_hotels[i+1])
+            front_i, end_i = 0, len_none_uuid
+            while front_i < end_i:
+                end_i -= 1
+                
+                logger.info(f" no UUID - {i*2}/{len_none_uuid}")
+                
+                scrape_hotel(none_uuid_hotels[front_i])
+                if not front_i == end_i:
+                    scrape_hotel(none_uuid_hotels[end_i])
+
+                front_i += 1
 
         with open(scrape_stat_path, 'w') as f:
             f.write(str(day_offset+1))

@@ -83,8 +83,6 @@ def get_room_types(room_name:str)-> str:
         if type_name in search_room_name:
             return abrv
 
-    logger.error("No abbreviation found for room name: {}".format(room_name))
-
     return " "
 
 

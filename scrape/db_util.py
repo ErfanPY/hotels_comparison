@@ -4,7 +4,7 @@ import time
 import mysql.connector
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("main_logger")
 
 
 def get_db_connection(host=None, user=None, password=None, port=None, database=None):
@@ -34,7 +34,6 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
 
     update_string = ', '.join("`{0}`=VALUES(`{0}`)".format(name) for name in key_value.keys())
     insert_string = "INSERT INTO  {} ({}) VALUES ({}) ON DUPLICATE KEY UPDATE {};".format(table, keys_string, values_string, update_string)
-    # insert_string = "INSERT IGNORE INTO  {} ({}) VALUES ({});".format(table, keys_string, values_string)
     
     curs.execute(insert_string, list(key_value.values()))
     conn.commit()
@@ -61,7 +60,11 @@ def custom(query_string:str, data:list=[], conn=None):
     curs = conn.cursor(buffered=True, dictionary=True)
 
     curs.execute(query_string, data)
-    result = curs.fetchall()
+    if curs._rowcount > -1:
+        result = curs.fetchall()
+    else:
+        result = None
+
     conn.commit()
     
     return result
