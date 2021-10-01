@@ -11,40 +11,9 @@ x-common_scrapper: &scrapper
 
 services:
 
-    snapptripp-n1:
-      <<: *scrapper
-      environment:
-        - SCRAPE_SNAPPTRIP=1
-
-  aibaba-n1:
+  together-n1:
     <<: *scrapper
     environment:
-      - SCRAPE_ALIBABA=1
+      - SCRAPE_TOGETHER=1
       - ALIBABA_SCRAPPER_SLEEP_TIME=0
       - ALIBABA_TO_SCRAPE_CITIES=tehran,bandarAbbas
-
-  aibaba-n2:
-    <<: *scrapper
-    environment:
-      - SCRAPE_ALIBABA=1
-      - ALIBABA_SCRAPPER_SLEEP_TIME=0
-      - ALIBABA_TO_SCRAPE_CITIES=mashhad,ahvaz
-
-  aibaba-n3:
-    <<: *scrapper
-    environment:
-      - SCRAPE_ALIBABA=1
-      - ALIBABA_SCRAPPER_SLEEP_TIME=0
-      - ALIBABA_TO_SCRAPE_CITIES=shiraz,qazvin
-
-  aibaba-n4:
-    <<: *scrapper
-    environment:
-      - SCRAPE_ALIBABA=1
-      - ALIBABA_SCRAPPER_SLEEP_TIME=0
-      - ALIBABA_TO_SCRAPE_CITIES=isfahan,sari
-  
-  snapptripp-n1:
-    <<: *scrapper
-    environment:
-      - SCRAPE_SNAPPTRIP=1
