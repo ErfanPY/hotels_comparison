@@ -43,7 +43,7 @@ def get_search_session_id(city_id, offset):
             return response_data["result"]["sessionId"], start_date
 
         except Exception as e:
-            logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}\nresponse={}".format(e, sleep_time, f"{response.content[:100]}...{response.content[100:]}"))
+            logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}".format(e, sleep_time))
        
         time.sleep(sleep_time)
         sleep_time += 1

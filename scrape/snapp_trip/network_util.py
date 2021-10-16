@@ -5,6 +5,8 @@ from time import sleep
 
 from bs4 import BeautifulSoup
 
+logger = logging.getLogger("main_logger")
+
 
 def get_content_make_soup(url:str, headers:dict={}, **kwargs) -> BeautifulSoup:
         
@@ -35,7 +37,7 @@ def get_content(url:str, headers:dict={}) -> bytes:
             return page_content
 
         except Exception as e:
-            logging.error(f"Getting url failed, url: {url}, Error: {e}")
+            logger.error(f"Getting url failed, url: {url}, Error: {e}")
 
         sleep(sec)
         sec += 1
