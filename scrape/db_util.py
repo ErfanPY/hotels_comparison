@@ -36,12 +36,16 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
     insert_string = "INSERT INTO  {} ({}) VALUES ({}) ON DUPLICATE KEY UPDATE {};".format(table, keys_string, values_string, update_string)
 
     try:
+        start_time = time.time()
         curs.execute(insert_string, list(key_value.values()))
         conn.commit()
     except Exception as e:
+        end_time = time.time() - start_time
+
         key_values_text = ",".join(f"{k}: {v}" for k, v in key_value.items())
-        logger.error(f"Insertion failed, query: {insert_string}, [{key_values_text}]")
+        logger.error(f"Insertion failed, time: {end_time:.2f}s, query: {insert_string}, [{key_values_text}]")
         logger.exception(e)
+        
         raise e
 
 
