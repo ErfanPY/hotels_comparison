@@ -34,9 +34,16 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
 
     update_string = ', '.join("`{0}`=VALUES(`{0}`)".format(name) for name in key_value.keys())
     insert_string = "INSERT INTO  {} ({}) VALUES ({}) ON DUPLICATE KEY UPDATE {};".format(table, keys_string, values_string, update_string)
-    
-    curs.execute(insert_string, list(key_value.values()))
-    conn.commit()
+
+    try:
+        curs.execute(insert_string, list(key_value.values()))
+        conn.commit()
+    except Exception as e:
+        key_values_text = ",".join(f"{k}: {v}" for k, v in key_value.items())
+        logger.error(f"Insertion failed, query: {insert_string}, [{key_values_text}]")
+        logger.exception(e)
+        raise e
+
 
     if not id_field is None:
         identifier_string = ' AND '.join(f"{key} like '%{value}%'" for key, value in identifier_condition.items())
