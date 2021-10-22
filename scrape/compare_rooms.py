@@ -5,7 +5,6 @@ from scrape.common_utils import mgroupby
 
 def main():
     rooms_data = []
-    romUUID_romIDs = {}
 
     single_rooms = []
     
@@ -20,14 +19,7 @@ def main():
         result = custom(query_string=get_romUUIDs_query, conn=conn)
 
 
-    for room in result:
-        htlFrom = room['htlFrom']
-        romID = room['romID']
-        romUUID = room['romUUID']
-
-        past = romUUID_romIDs.get(romUUID, {})
-        past[htlFrom] = romID
-        romUUID_romIDs[romUUID] = past
+    romUUID_romIDs = make_romUUID_romIDs(result)
     
     rooms_data_query = """
             SELECT romUUID, avlInsertionDate, avlDate, romID, avlBasePrice,
@@ -77,10 +69,23 @@ def main():
             else:
                 print("Non handled condition, {}".format(str(htlFrom_groups)))
           
-        add_single_available_rooms(single_rooms, romUUID_romIDs, conn)
+        add_single_available_rooms(rooms=single_rooms, romUUID_romIDs=romUUID_romIDs, conn=conn)
 
 
-def compare_rooms(alibaba_room, snapptrip_room, conn):
+def make_romUUID_romIDs(rooms):
+    romUUID_romIDs = {}
+
+    for room in rooms:
+        htlFrom = room['htlFrom']
+        romID = room['romID']
+        romUUID = room['romUUID']
+
+        past = romUUID_romIDs.get(romUUID, {})
+        past[htlFrom] = romID
+        romUUID_romIDs[romUUID] = past
+
+
+def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
     prices_alrInfo = {
         'base_price':{
             alibaba_room['romID']: alibaba_room['avlBasePrice'],
@@ -101,6 +106,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
         insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
+            "alrCrawlTime": crawsl_start_time,
             "alrType": alrType,
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
@@ -114,6 +120,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
         insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
+            "alrCrawlTime": crawsl_start_time,
             "alrType": alrType,
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
@@ -122,14 +129,16 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
 
     if not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
         alrType = 'O'
-        alrInfo = {
-            alibaba_room['romID']: alibaba_room['romMealPlan'],
-            snapptrip_room['romID']: snapptrip_room['romMealPlan'],
+        alrInfo = prices_alrInfo
+        alrInfo["options"] = {
+            alibaba_room['romID']: [alibaba_room['romMealPlan']],
+            snapptrip_room['romID']: [snapptrip_room['romMealPlan']],
         }
 
         insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
+            "alrCrawlTime": crawsl_start_time,
             "alrType": alrType,
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
@@ -144,7 +153,8 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
 
     if diff_a or diff_b:
         alrType = 'O'
-        alrInfo = {
+        alrInfo = prices_alrInfo
+        alrInfo["options"] = {
             alibaba_room['romID']: list(diff_a),
             snapptrip_room['romID']: list(diff_b),
         }
@@ -152,6 +162,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
         insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
+            "alrCrawlTime": crawsl_start_time,
             "alrType": alrType,
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
@@ -159,7 +170,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn):
         }, id_field=None, identifier_condition=None, conn=conn)
         
 
-def add_single_available_rooms(rooms, romUUID_romIDs, conn):
+def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=None):
     for room in rooms:
         romUUID = room['romUUID']
 
@@ -182,6 +193,7 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn):
         insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": room['avlDate'],
+            "alrCrawlTime": crawsl_start_time,
             "alrType": 'R',
             "alrA_romID": alrA_romID,
             "alrS_romID": alrS_romID,

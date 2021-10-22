@@ -1,6 +1,7 @@
 from collections import defaultdict
 import logging
 import os
+from datetime import datetime
 
 from scrape.db_util import (
     custom,
@@ -22,7 +23,7 @@ from scrape.snapp_trip.scraper import (
     en_fa_cities
 )
 
-from scrape.compare_rooms import main as compare_scrapes, compare_rooms
+from scrape.compare_rooms import compare_rooms, add_single_available_rooms, make_romUUID_romIDs
 
 
 logger = logging.getLogger("main_logger")
@@ -43,9 +44,11 @@ START_DAY_OFFSET -= 1
 START_DAY_OFFSET = min(0, START_DAY_OFFSET)
 
 SCRAPE_END_DAY = os.environ.get("SCRAPE_END_DAY", "31")
-SCRAPE_END_DAY = int(SCRAPE_END_DAY)
-SCRAPE_END_DAY += 1
+SCRAPE_END_DAY = int(SCRAPE_END_DAY) + 1
 SCRAPE_END_DAY = max(SCRAPE_END_DAY, 31)
+
+crawl_start_datetime = datetime.now()
+
 
 def main():
     visited_snapp_hotel = []
@@ -85,25 +88,24 @@ def main():
             
             len_uuid_hotels = len(uuid_hotels)
             for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
-                if uuid is None:
-                    continue
-                logger.info(f"{uuid}: {i}/{len_uuid_hotels}")
+                if uuid:
+                    logger.info(f"{uuid}: {i}/{len_uuid_hotels}")
 
-                site_rooms = {}
+                    site_rooms = {}
 
-                len_hotels = len(hotels)
-                for j, hotel in enumerate(hotels):
-                    logger.info(f" UUID - {j}/{len_hotels}")
+                    len_hotels = len(hotels)
+                    for j, hotel in enumerate(hotels):
+                        logger.info(f" UUID - {j}/{len_hotels}")
 
-                    rooms = scrape_hotel(hotel)
-                    site_rooms[hotel['hotel_from']] = rooms
-                
-                if len(site_rooms.keys()) == 2:
-                    compare_hotel_rooms(**site_rooms)
-                else:
-                    pass
-                    # add_single_available_rooms() #TODO
+                        rooms = scrape_hotel(hotel)
+                        site_rooms[hotel['hotel_from']] = rooms
 
+                    if len(site_rooms.keys()) == 2:
+                        compare_hotel_rooms(crawl_start_datetime=crawl_start_datetime, **site_rooms)
+                    elif len(site_rooms.keys()) == 1:
+                        add_reserved_hotel(site_rooms.values()[0])
+                    else:
+                        logger.error("unhandleable count of sites.")
 
             none_uuid_hotels = uuid_hotels.get(None, [])
             len_none_uuid = len(none_uuid_hotels)
@@ -112,7 +114,7 @@ def main():
             while front_i < end_i:
                 end_i -= 1
                 
-                logger.info(f" no UUID - {i*2}/{len_none_uuid}")
+                logger.info(f" no UUID - {front_i*2}/{len_none_uuid}")
                 
                 scrape_hotel(none_uuid_hotels[front_i])
                 if not front_i == end_i:
@@ -223,7 +225,7 @@ def scrape_hotel(hotel: dict) -> int:
     return rooms
 
 
-def compare_hotel_rooms(alibaba, snapptrip):
+def compare_hotel_rooms(alibaba, snapptrip, crawl_start_datetime):
     uuidـrooms = {}
 
     uuid_room = defaultdict(list)
@@ -236,7 +238,14 @@ def compare_hotel_rooms(alibaba, snapptrip):
 
     for uuid, rooms in uuidـrooms.items():
         if not uuid is None:
-            compare_rooms(rooms[0], rooms[-1])
+            compare_rooms(rooms[0], rooms[-1], crawsl_start_time=crawl_start_datetime)
+
+
+def add_reserved_hotel(rooms):
+    romUUID_romIDs = make_romUUID_romIDs(rooms)
+
+    with get_db_connection() as conn:
+        add_single_available_rooms(rooms=rooms, romUUID_romIDs=romUUID_romIDs, conn=conn)
 
 
 if __name__ == "__main__":
