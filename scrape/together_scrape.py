@@ -103,7 +103,7 @@ def main():
                     if len(site_rooms.keys()) == 2:
                         compare_hotel_rooms(crawl_start_datetime=crawl_start_datetime, **site_rooms)
                     elif len(site_rooms.keys()) == 1:
-                        add_reserved_hotel(site_rooms.values()[0])
+                        add_reserved_hotel(list(site_rooms.values())[0])
                     else:
                         logger.error("unhandleable count of sites.")
 
