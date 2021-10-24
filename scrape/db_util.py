@@ -32,25 +32,46 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
     keys_string = ', '.join(key for key in key_value.keys())
     values_string = ', '.join('%s' for _ in range(len(key_value)))
 
-    update_string = ', '.join("`{0}`=VALUES(`{0}`)".format(name) for name in key_value.keys())
-    insert_string = "INSERT INTO  {} ({}) VALUES ({}) ON DUPLICATE KEY UPDATE {};".format(table, keys_string, values_string, update_string)
 
-    try:
-        start_time = time.time()
-        curs.execute(insert_string, list(key_value.values()))
-        conn.commit()
-    except Exception as e:
-        end_time = time.time() - start_time
+    identifier_string = ' AND '.join(f"{key} = '{value}'" for key, value in identifier_condition.items())
+    
+    insert_query = f"""
+        INSERT INTO {table} ({keys_string})
+        SELECT  
+        {values_string}
+        FROM (SELECT 1) A
+        LEFT JOIN(
+            SELECT 1 AS Dup
+            FROM {table}
+            WHERE {identifier_string}
+        ) B
+        ON TRUE
+        WHERE B.Dup IS NULL
+        LIMIT 1
+    """
+    while True:
+        try:
+            start_time = time.time()
+            # curs.execute(insert_string, list(key_value.values()))
+            curs.execute(insert_query, list(key_value.values()))
+            conn.commit()
+            break
+        except Exception as e:
+            end_time = time.time() - start_time
 
-        key_values_text = ",".join(f"{k}: {v}" for k, v in key_value.items())
-        logger.error(f"Insertion failed, time: {end_time:.2f}s, query: {insert_string}, [{key_values_text}]")
-        logger.exception(e)
-        
-        raise e
+            key_values_text = ",".join(f"{k}: {v}" for k, v in key_value.items())
 
+            
+            if "WSREP" in str(e):
+                logger.error(f"WSREP deadlock/conflict. Retring")
+            else:
+                logger.error(f"Insertion failed, time: {end_time:.2f}s, query: {insert_query}, [{key_values_text}]")
+                logger.exception(e)
+                raise e
+
+            time.sleep(2)
 
     if not id_field is None:
-        identifier_string = ' AND '.join(f"{key} like '%{value}%'" for key, value in identifier_condition.items())
 
         if type(id_field) == list:
             select_id_query = "SELECT {} from {} WHERE {}".format(", ".join(id_field), table, identifier_string)
@@ -59,9 +80,7 @@ def insert_select_id(table:str, key_value:dict, id_field:str, identifier_conditi
             
         else:
             select_id_query = "SELECT {} from {} WHERE {}".format(id_field, table, identifier_string)
-            
             curs.execute(select_id_query)
-
             row_id = curs.fetchone()[id_field]
             
             return str(row_id)
