@@ -310,7 +310,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                     if dsicount_price > base_price:
                         base_price, dsicount_price = dsicount_price, base_price
 
-                    room_avl = {
+                    room_avl_info = {
                         "avl_romID": roomID_and_UUID['romID'],
                         "avlDate": day['date'],
                         "avlCrawlTime": CRAWL_START_DATETIME,
@@ -321,13 +321,13 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
 
                     insert_select_id(
                         table="tblAvailabilityInfo",
-                        key_value=room_avl,
+                        key_value=room_avl_info,
                         id_field=None,
-                        identifier_condition={},
+                        identifier_condition=room_avl_info,
                         conn=conn
                     )
 
-                    room_data.update(room_avl)
+                    room_data.update(room_avl_info)
                     res_rooms.append(room_data)
             rooms_name_id[room_name]= roomID_and_UUID['romID']
             rooms_counter += 1
