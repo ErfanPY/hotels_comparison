@@ -9,3 +9,5 @@ fandenv/
 .fandogh/
 notes
 test_codes/
+mysql-docker-compose.yml
+docker_update.sh

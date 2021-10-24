@@ -166,7 +166,10 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
             },
             id_field='htlID',
             identifier_condition={
-                "htlFaName": hotel['faName']
+                'htlCity': city_name,
+                'htlEnName': hotel['enName'],
+                "htlFaName": hotel['faName'],
+                "htlFrom": 'A'
             },
             conn=conn
         )
