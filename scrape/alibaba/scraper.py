@@ -240,10 +240,7 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
             table='tblRooms',
             key_value=room_data,
             id_field=['romID', 'romUUID'],
-            identifier_condition={
-                "romName": room['name'],
-                'rom_htlID': hotel_id
-            },
+            identifier_condition=room_data,
             conn=conn
         )
 
@@ -262,8 +259,6 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
         insert_select_id(
             table="tblAvailabilityInfo",
             key_value=room_avl_info,
-            id_field=None,
-            identifier_condition=room_avl_info,
             conn=conn
         )
         room_data.update(room_avl_info)

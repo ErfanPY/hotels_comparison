@@ -26,13 +26,13 @@ def get_db_connection(host=None, user=None, password=None, port=None, database=N
     return cnx
 
 
-def insert_select_id(table:str, key_value:dict, id_field:str, identifier_condition, conn):
+def insert_select_id(table:str, key_value:dict, conn, id_field:str=None, identifier_condition:dict=None):
     curs = conn.cursor(buffered=True, dictionary=True)
 
     keys_string = ', '.join(key for key in key_value.keys())
     values_string = ', '.join('%s' for _ in range(len(key_value)))
 
-
+    identifier_condition = key_value if not identifier_condition else identifier_condition
     identifier_string = ' AND '.join(f"{key} = '{value}'" for key, value in identifier_condition.items())
     
     insert_query = f"""

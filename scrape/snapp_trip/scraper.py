@@ -171,7 +171,9 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
     Returns:
         None
     """
+
     unique_url = urljoin(hotel_url, urlparse(hotel_url).path)
+    city = fa_en_cities.get(city_name, city_name)
 
     with get_db_connection() as conn:
         hotel_id = insert_select_id(
@@ -179,13 +181,15 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
             key_value={
                 "htlFaName": hotel_name,
                 "htlEnName": "",
-                "htlCity": fa_en_cities.get(city_name, city_name),
+                "htlCity": city,
                 "htlUrl": unique_url,
                 "htlFrom": 'S'
             },
             id_field='htlID',
             identifier_condition={
-                "htlFaName": hotel_name
+                'htlCity': city,
+                "htlFaName": hotel_name,
+                "htlFrom": 'S'
             },
             conn=conn
         )
@@ -283,10 +287,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
  
                 key_value=room_data,
                 id_field=['romID', 'romUUID'],
-                identifier_condition={
-                    "rom_htlID": hotel_id,
-                    'romName': room_name
-                },
+                identifier_condition=room_data,
                 conn=conn
             )
             room_data['room_UUID'] = roomID_and_UUID['romUUID']
@@ -322,8 +323,6 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                     insert_select_id(
                         table="tblAvailabilityInfo",
                         key_value=room_avl_info,
-                        id_field=None,
-                        identifier_condition=room_avl_info,
                         conn=conn
                     )
 
@@ -374,22 +373,22 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:
             if not room_id:
                 # room_id = 0
                 continue
-
-            insert_select_id(
-                table="tblRoomsOpinions",
-                key_value={
-                    "rop_romID": room_id,
-                    "ropUserName": user_name,
-                    "ropDate": comment_date,
-                    "ropStrengths": stren_point,
-                    "ropWeakness": weak_point,
-                    "ropText": comment_text
-                },
-                id_field=None,
-                identifier_condition={},
-                conn=conn
-            )
-
+            try:
+                insert_select_id(
+                    table="tblRoomsOpinions",
+                    key_value={
+                        "rop_romID": room_id,
+                        "ropUserName": user_name,
+                        "ropDate": comment_date,
+                        "ropStrengths": stren_point,
+                        "ropWeakness": weak_point,
+                        "ropText": comment_text
+                    },
+                    conn=conn
+                )
+            except Exception as e:
+                logger.error("adding comment failed.")
+                return
 
 if __name__ == "__main__":
     main()

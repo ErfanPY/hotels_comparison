@@ -102,8 +102,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
 
         alrType = 'P'
         alrInfo = prices_alrInfo
-       
-        insert_select_id(table='tblAlert', key_value={
+        room_alret = {
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
             "alrCrawlTime": crawsl_start_time,
@@ -111,7 +110,13 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
             'alrInfo': json.dumps(alrInfo)
-        }, id_field=None, identifier_condition=None, conn=conn)
+        }
+
+        insert_select_id(
+            table='tblAlert',
+            key_value=room_alret,
+            conn=conn
+        )
     
     if not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
         alrType = 'D'
@@ -125,7 +130,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
             'alrInfo': json.dumps(alrInfo)
-        }, id_field=None, identifier_condition=None, conn=conn)
+        }, conn=conn)
 
     if not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
         alrType = 'O'
@@ -143,7 +148,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
             'alrInfo': json.dumps(alrInfo)
-        }, id_field=None, identifier_condition=None, conn=conn)
+        }, conn=conn)
 
     set_a = set(alibaba_room['romAdditives'])
     set_b = set(snapptrip_room['romAdditives'])
@@ -167,7 +172,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             "alrA_romID": alibaba_room['romID'],
             "alrS_romID": snapptrip_room['romID'],
             'alrInfo': json.dumps(alrInfo)
-        }, id_field=None, identifier_condition=None, conn=conn)
+        }, conn=conn)
         
 
 def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=None):
@@ -198,7 +203,7 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
             "alrA_romID": alrA_romID,
             "alrS_romID": alrS_romID,
             "alrInfo": json.dumps(alrInfo)
-        }, id_field=None, identifier_condition=None, conn=conn)
+        }, conn=conn)
 
 if __name__ == "__main__":
     main()        
