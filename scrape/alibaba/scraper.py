@@ -153,27 +153,29 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
     Returns:
         None
     """
-
-    with get_db_connection() as conn:
-        hotel_id = insert_select_id(
-            table='tblHotels',
-            key_value={
-                'htlCity': city_name,
-                'htlFaName': hotel['faName'],
-                'htlEnName': hotel['enName'],
-                "htlUrl": hotel['url'],
-                "htlFrom": 'A'
-            },
-            id_field='htlID',
-            identifier_condition={
-                'htlCity': city_name,
-                'htlEnName': hotel['enName'],
-                "htlFaName": hotel['faName'],
-                "htlFrom": 'A'
-            },
-            conn=conn
-        )
-
+    while True:
+        with get_db_connection() as conn:
+            hotel_id = insert_select_id(
+                table='tblHotels',
+                key_value={
+                    'htlCity': city_name,
+                    'htlFaName': hotel['faName'],
+                    'htlEnName': hotel['enName'],
+                    "htlUrl": hotel['url'],
+                    "htlFrom": 'A'
+                },
+                id_field='htlID',
+                identifier_condition={
+                    'htlCity': city_name,
+                    'htlEnName': hotel['enName'],
+                    "htlFaName": hotel['faName'],
+                    "htlFrom": 'A'
+                },
+                conn=conn
+            )
+        if not hotel_id == -1:
+            break
+        time.sleep(2)
 
     final_result = False
     rooms = []
@@ -228,40 +230,48 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
     Returns:
         None
     """
+    while True:
+        with get_db_connection() as conn:
+            room_data = {
+                'romName': room['name'],
+                "romType": get_room_types(room['name']),
+                'rom_htlID': hotel_id,
+                'romMealPlan': meal_plan
+            }
+            room_id_and_uuid = insert_select_id(
+                table='tblRooms',
+                key_value=room_data,
+                id_field=['romID', 'romUUID'],
+                identifier_condition=room_data,
+                conn=conn
+            )
 
-    with get_db_connection() as conn:
-        room_data = {
-            'romName': room['name'],
-            "romType": get_room_types(room['name']),
-            'rom_htlID': hotel_id,
-            'romMealPlan': meal_plan
-        }
-        room_id_and_uuid = insert_select_id(
-            table='tblRooms',
-            key_value=room_data,
-            id_field=['romID', 'romUUID'],
-            identifier_condition=room_data,
-            conn=conn
-        )
+            if room_id_and_uuid == -1:
+                time.sleep(2)
+                continue
 
-        if room['price'] > room['boardPrice']:
-            room['price'], room['boardPrice'] = room['boardPrice'], room['price']
+            if room['price'] > room['boardPrice']:
+                room['price'], room['boardPrice'] = room['boardPrice'], room['price']
+            
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            room_avl_info = {
+                "avl_romID": room_id_and_uuid['romID'],
+                "avlDate": date_from,
+                "avlCrawlTime": CRAWL_START_DATETIME,
+                "avlInsertionDate": now,
+                "avlBasePrice": room['boardPrice'],
+                "avlDiscountPrice": room['price']
+            }
+            err_check = insert_select_id(
+                table="tblAvailabilityInfo",
+                key_value=room_avl_info,
+                conn=conn
+            )
+
+            if not err_check == -1:
+                room_data.update(room_avl_info)
+                break
         
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        room_avl_info = {
-            "avl_romID": room_id_and_uuid['romID'],
-            "avlDate": date_from,
-            "avlCrawlTime": CRAWL_START_DATETIME,
-            "avlInsertionDate": now,
-            "avlBasePrice": room['boardPrice'],
-            "avlDiscountPrice": room['price']
-        }
-        insert_select_id(
-            table="tblAvailabilityInfo",
-            key_value=room_avl_info,
-            conn=conn
-        )
-        room_data.update(room_avl_info)
 
     return room_id_and_uuid['romID'], room_id_and_uuid['romUUID'], room_data
 

@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 import os
 from datetime import datetime
+import time
 
 from scrape.db_util import (
     custom,
@@ -238,8 +239,21 @@ def compare_hotel_rooms(alibaba, snapptrip, crawl_start_datetime):
 
     for uuid, rooms in uuidـrooms.items():
         if not uuid is None:
-            compare_rooms(rooms[0], rooms[-1], crawsl_start_time=crawl_start_datetime)
+            while True:
+                with get_db_connection() as conn:
 
+                    #TODO How this thing were working before adding conn?
+                    err_check = compare_rooms(
+                        alibaba_room=rooms[0],
+                        snapptrip_room=rooms[-1],
+                        conn=conn,
+                        crawsl_start_time=crawl_start_datetime
+                    )
+                   
+                    if not err_check == -1:
+                        break
+                
+                time.sleep(2)
 
 def add_reserved_hotel(rooms):
     romUUID_romIDs = make_romUUID_romIDs(rooms)

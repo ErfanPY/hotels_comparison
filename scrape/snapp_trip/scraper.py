@@ -78,9 +78,9 @@ def get_city_hotels(city_name, day_offset=0):
     while True:
         
         search_page_soup = get_content_make_soup(to_scrape_url)
-        time.sleep(SLEEP_TIME)
         if search_page_soup == -1:
             logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
+            time.sleep(SLEEP_TIME)
             continue
 
         hotels = search_page_soup.select_one(".hotels-data").findAll("li", {'data-hotel-id': True})
@@ -104,7 +104,8 @@ def get_city_hotels(city_name, day_offset=0):
                 break
         else:
             break
-            
+        
+        
     return all_hotels
 
 
@@ -175,24 +176,29 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
     unique_url = urljoin(hotel_url, urlparse(hotel_url).path)
     city = fa_en_cities.get(city_name, city_name)
 
-    with get_db_connection() as conn:
-        hotel_id = insert_select_id(
-            table='tblHotels',
-            key_value={
-                "htlFaName": hotel_name,
-                "htlEnName": "",
-                "htlCity": city,
-                "htlUrl": unique_url,
-                "htlFrom": 'S'
-            },
-            id_field='htlID',
-            identifier_condition={
-                'htlCity': city,
-                "htlFaName": hotel_name,
-                "htlFrom": 'S'
-            },
-            conn=conn
-        )
+    while True:
+        with get_db_connection() as conn:
+            hotel_id = insert_select_id(
+                table='tblHotels',
+                key_value={
+                    "htlFaName": hotel_name,
+                    "htlEnName": "",
+                    "htlCity": city,
+                    "htlUrl": unique_url,
+                    "htlFrom": 'S'
+                },
+                id_field='htlID',
+                identifier_condition={
+                    'htlCity': city,
+                    "htlFaName": hotel_name,
+                    "htlFrom": 'S'
+                },
+                conn=conn
+            )
+
+        if not hotel_id == -1:
+            break
+        time.sleep(2)
 
     hotel_soup = get_content_make_soup(hotel_url)
 
@@ -259,77 +265,86 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
     rooms_name_id = {}
     res_rooms = []
 
-    with get_db_connection() as conn:
-        rooms_counter = 0
-        for room in rooms:
-            room_site_id = room.contents[3].attrs['data-room_id']
-            room_name = room.contents[1].attrs['data-roomname']
+    rooms_counter = 0
+    for room in rooms:
+        while True:
+            with get_db_connection() as conn:
 
-            breakfast = room.select_one('.breakfast')
-            meal_plan = 'RO' if 'disabled' in breakfast.attrs['class'] else 'BB'
+                room_site_id = room.contents[3].attrs['data-room_id']
+                room_name = room.contents[1].attrs['data-roomname']
 
-            additives = []
-            no_extra_bed = room.select_one(".extra-bed.disabled")
-            if no_extra_bed is None:
-                additives.append("extra-bed")
-            no_breakfast = room.select_one(".breakfast.disabled")
-            if no_breakfast is None:
-                additives.append("breakfast")
-            room_data = {
-                "romAdditives": json.dumps(additives),
-                "rom_htlID": hotel_id,
-                "romName": room_name,
-                "romType": get_room_types(room_name),
-                'romMealPlan': meal_plan
-            }
-            roomID_and_UUID = insert_select_id(
-                table='tblRooms',
- 
-                key_value=room_data,
-                id_field=['romID', 'romUUID'],
-                identifier_condition=room_data,
-                conn=conn
-            )
-            room_data['room_UUID'] = roomID_and_UUID['romUUID']
-            room_data['room_ID'] = roomID_and_UUID['romID']
-            
-            room_calender_content = get_content(
-                "https://www.snapptrip.com/shopping/{}/calendar/{}".format(
-                    hotel_site_id, room_site_id))
+                breakfast = room.select_one('.breakfast')
+                meal_plan = 'RO' if 'disabled' in breakfast.attrs['class'] else 'BB'
 
-            if room_calender_content == -1:
-                logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
-                continue
+                additives = []
+                no_extra_bed = room.select_one(".extra-bed.disabled")
+                if no_extra_bed is None:
+                    additives.append("extra-bed")
+                no_breakfast = room.select_one(".breakfast.disabled")
+                if no_breakfast is None:
+                    additives.append("breakfast")
+                room_data = {
+                    "romAdditives": json.dumps(additives),
+                    "rom_htlID": hotel_id,
+                    "romName": room_name,
+                    "romType": get_room_types(room_name),
+                    'romMealPlan': meal_plan
+                }
+                roomID_and_UUID = insert_select_id(
+                    table='tblRooms',
+    
+                    key_value=room_data,
+                    id_field=['romID', 'romUUID'],
+                    identifier_condition=room_data,
+                    conn=conn
+                )
+                if roomID_and_UUID == -1:
+                    time.sleep(SLEEP_TIME)
+                    continue
+                room_data['room_UUID'] = roomID_and_UUID['romUUID']
+                room_data['room_ID'] = roomID_and_UUID['romID']
+                
+                room_calender_content = get_content(
+                    "https://www.snapptrip.com/shopping/{}/calendar/{}".format(
+                        hotel_site_id, room_site_id))
 
-            room_calender = json.loads(room_calender_content)
+                if room_calender_content == -1:
+                    logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
+                    time.sleep(SLEEP_TIME)
+                    continue
 
-            for data in room_calender['data']:
-                for day in data['calendar']:
-                    base_price = day['prices']['local_price']*10
-                    dsicount_price = day['prices']['local_price_off']*10
+                room_calender = json.loads(room_calender_content)
 
-                    if dsicount_price > base_price:
-                        base_price, dsicount_price = dsicount_price, base_price
+                for data in room_calender['data']:
+                    for day in data['calendar']:
+                        base_price = day['prices']['local_price']*10
+                        dsicount_price = day['prices']['local_price_off']*10
 
-                    room_avl_info = {
-                        "avl_romID": roomID_and_UUID['romID'],
-                        "avlDate": day['date'],
-                        "avlCrawlTime": CRAWL_START_DATETIME,
-                        "avlInsertionDate": datetime.now(),
-                        "avlBasePrice": day['prices']['local_price']*10,
-                        "avlDiscountPrice": day['prices']['local_price_off']*10
-                    }
+                        if dsicount_price > base_price:
+                            base_price, dsicount_price = dsicount_price, base_price
 
-                    insert_select_id(
-                        table="tblAvailabilityInfo",
-                        key_value=room_avl_info,
-                        conn=conn
-                    )
+                        room_avl_info = {
+                            "avl_romID": roomID_and_UUID['romID'],
+                            "avlDate": day['date'],
+                            "avlCrawlTime": CRAWL_START_DATETIME,
+                            "avlInsertionDate": datetime.now(),
+                            "avlBasePrice": day['prices']['local_price']*10,
+                            "avlDiscountPrice": day['prices']['local_price_off']*10
+                        }
 
-                    room_data.update(room_avl_info)
-                    res_rooms.append(room_data)
-            rooms_name_id[room_name]= roomID_and_UUID['romID']
-            rooms_counter += 1
+                        err_check = insert_select_id(
+                            table="tblAvailabilityInfo",
+                            key_value=room_avl_info,
+                            conn=conn
+                        )
+                        if err_check == -1:
+                            logger.error("adding availability info failed.")
+
+                        room_data.update(room_avl_info)
+                        res_rooms.append(room_data)
+                rooms_name_id[room_name]= roomID_and_UUID['romID']
+                rooms_counter += 1
+                break
 
         # logger.info("Snapptrip - Hotel: {} has {} rooms.".format(hotel_id, rooms_counter))
 
