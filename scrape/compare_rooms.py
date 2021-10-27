@@ -1,4 +1,5 @@
 import json
+import time
 from scrape.db_util import custom, get_db_connection, insert_select_id
 from scrape.common_utils import mgroupby
 
@@ -48,27 +49,32 @@ def main():
         lambda room:"{}_{}".format(room['romUUID'], room['avlDate'])
     )
 
-    with get_db_connection() as conn:
 
-        for roomUUID, rooms_group in room_UUID_groups.items():
-            htlFrom_groups = mgroupby(
-                rooms_group,
-                lambda room:room['htlFrom'],
-                sort_key=lambda room:room['romMealPlan']
-            )
-          
-            if len(htlFrom_groups.keys()) == 1:
-                single_room = list(htlFrom_groups.values())[0][0]
-                single_rooms.append(single_room)
-            elif len(htlFrom_groups.keys()) == 2:
-                compare_rooms(
-                    alibaba_room=htlFrom_groups['A'][0],
-                    snapptrip_room=htlFrom_groups['S'][0],
-                    conn=conn
-                )
-            else:
-                print("Non handled condition, {}".format(str(htlFrom_groups)))
-          
+    for roomUUID, rooms_group in room_UUID_groups.items():
+        htlFrom_groups = mgroupby(
+            rooms_group,
+            lambda room:room['htlFrom'],
+            sort_key=lambda room:room['romMealPlan']
+        )
+        
+        if len(htlFrom_groups.keys()) == 1:
+            single_room = list(htlFrom_groups.values())[0][0]
+            single_rooms.append(single_room)
+        elif len(htlFrom_groups.keys()) == 2:
+            while True:
+                with get_db_connection() as conn:
+                    err_check = compare_rooms(
+                        alibaba_room=htlFrom_groups['A'][0],
+                        snapptrip_room=htlFrom_groups['S'][0],
+                        conn=conn
+                    )
+                if not err_check == -1:
+                    break
+                time.sleep(2)
+        else:
+            print("Non handled condition, {}".format(str(htlFrom_groups)))
+
+    with get_db_connection() as conn:
         add_single_available_rooms(rooms=single_rooms, romUUID_romIDs=romUUID_romIDs, conn=conn)
 
 
@@ -112,17 +118,19 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             'alrInfo': json.dumps(alrInfo)
         }
 
-        insert_select_id(
+        err_check = insert_select_id(
             table='tblAlert',
             key_value=room_alret,
             conn=conn
         )
-    
+
+        if err_check == -1:
+            return -1
     if not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
         alrType = 'D'
         alrInfo = prices_alrInfo
 
-        insert_select_id(table='tblAlert', key_value={
+        err_check = insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
             "alrCrawlTime": crawsl_start_time,
@@ -131,7 +139,10 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             "alrS_romID": snapptrip_room['romID'],
             'alrInfo': json.dumps(alrInfo)
         }, conn=conn)
-
+        
+        if err_check == -1:
+            return -1
+    
     if not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
         alrType = 'O'
         alrInfo = prices_alrInfo
@@ -140,7 +151,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             snapptrip_room['romID']: [snapptrip_room['romMealPlan']],
         }
 
-        insert_select_id(table='tblAlert', key_value={
+        err_check = insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
             "alrCrawlTime": crawsl_start_time,
@@ -149,6 +160,9 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             "alrS_romID": snapptrip_room['romID'],
             'alrInfo': json.dumps(alrInfo)
         }, conn=conn)
+        
+        if err_check == -1:
+            return -1
 
     set_a = set(alibaba_room['romAdditives'])
     set_b = set(snapptrip_room['romAdditives'])
@@ -164,7 +178,7 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             snapptrip_room['romID']: list(diff_b),
         }
 
-        insert_select_id(table='tblAlert', key_value={
+        err_check = insert_select_id(table='tblAlert', key_value={
             "alrRoomUUID": romUUID, 
             "alrOnDate": alibaba_room['avlDate'],
             "alrCrawlTime": crawsl_start_time,
@@ -174,6 +188,8 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
             'alrInfo': json.dumps(alrInfo)
         }, conn=conn)
         
+        if err_check == -1:
+            return -1
 
 def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=None):
     for room in rooms:
