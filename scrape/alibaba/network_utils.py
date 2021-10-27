@@ -25,26 +25,22 @@ def get_search_session_id(city_id, offset):
 
             if response.status_code == 429:
                 logger.error("Alibaba - session - Too many request")
+                continue
             elif response.status_code == 403:
                 logger.error("Alibaba - session - Forbidden")
-            else:
-                break
+                continue
 
         except Exception as e:
             logger.error("Alibaba - network error - err:{} - sleep_time:{}".format(e, sleep_time))
+            continue
 
-        time.sleep(sleep_time)
-        sleep_time += 1
-
-    sleep_time = 2
-    while True:
         try:
             response_data = json.loads(response.content)
             return response_data["result"]["sessionId"], start_date
 
         except Exception as e:
             logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}".format(e, sleep_time))
-       
+            
         time.sleep(sleep_time)
         sleep_time += 1
 
