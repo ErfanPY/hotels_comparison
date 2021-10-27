@@ -42,11 +42,11 @@ if START_DAY_OFFSET == 1 and os.path.exists(scrape_stat_path):
         START_DAY_OFFSET = int(f.readline().strip())
 
 START_DAY_OFFSET -= 1
-START_DAY_OFFSET = min(0, START_DAY_OFFSET)
+START_DAY_OFFSET = max(0, START_DAY_OFFSET)
 
 SCRAPE_END_DAY = os.environ.get("SCRAPE_END_DAY", "31")
 SCRAPE_END_DAY = int(SCRAPE_END_DAY) + 1
-SCRAPE_END_DAY = max(SCRAPE_END_DAY, 31)
+SCRAPE_END_DAY = min(SCRAPE_END_DAY, 31)
 
 crawl_start_datetime = datetime.now()
 
