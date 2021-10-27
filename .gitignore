@@ -1,14 +1,5 @@
 /.vscode
-/sql_dumps
-/temp
 __pycache__
 *.log
-scrape/config.py
 .env
-fandenv/
-.fandogh/
-notes
 test_codes/
-mysql-docker-compose.yml
-docker_update.sh
-fake_data_insert.py
