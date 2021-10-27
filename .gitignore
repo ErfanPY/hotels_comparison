@@ -11,3 +11,4 @@ notes
 test_codes/
 mysql-docker-compose.yml
 docker_update.sh
+fake_data_insert.py
