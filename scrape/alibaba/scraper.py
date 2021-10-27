@@ -265,6 +265,11 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
             err_check = insert_select_id(
                 table="tblAvailabilityInfo",
                 key_value=room_avl_info,
+                identifier_condition={
+                    "avl_romID": room_id_and_uuid['romID'],
+                    "avlDate": date_from,
+                    "avlInsertionDate": now,
+                },
                 conn=conn
             )
 

@@ -335,6 +335,11 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                         err_check = insert_select_id(
                             table="tblAvailabilityInfo",
                             key_value=room_avl_info,
+                            identifier_condition={
+                                "avl_romID": roomID_and_UUID['romID'],
+                                "avlDate": day['date'],
+                                "avlInsertionDate": datetime.now(),
+                            },
                             conn=conn
                         )
                         if err_check == -1:
