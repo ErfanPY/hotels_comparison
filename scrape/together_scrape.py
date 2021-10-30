@@ -48,86 +48,49 @@ SCRAPE_END_DAY = os.environ.get("SCRAPE_END_DAY", "31")
 SCRAPE_END_DAY = int(SCRAPE_END_DAY) + 1
 SCRAPE_END_DAY = min(SCRAPE_END_DAY, 31)
 
-crawl_start_datetime = datetime.now()
+crawl_start_datetime = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
 
 def main():
-    visited_snapp_hotel = []
+    visited_snapp_hotels = set()
 
     for day_offset in range(START_DAY_OFFSET, SCRAPE_END_DAY):
         logger.info(f"Day: {day_offset}")
-
-        for city_name in TO_SCRAPE_CITIES:
-            logger.info(f"City: {city_name}")
-
-            htlFaName_htlUUID = get_htlFaName_htlUUID(city_name)
-
-            uuid_hotels = defaultdict(list)
-            
-            counter = 0
-            alibaba_hotels = a_get_city_hotels(city_name, day_offset)
-            for hotel in alibaba_hotels:
-                hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
-                uuid_hotels[hotel_uuid].append(hotel)
-                counter += 1
-
-            logger.info(f"Alibaba: {counter}")
-            
-            counter = 0
-            snapptrip_hotels = s_get_city_hotels(en_fa_cities[city_name], day_offset)
-            for hotel in snapptrip_hotels:
-                hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
-                counter += 1
-                
-                if hotel_uuid and hotel_uuid in visited_snapp_hotel:
-                    continue
-
-                uuid_hotels[hotel_uuid].append(hotel)
-                visited_snapp_hotel.append(hotel_uuid)
-            
-            logger.info(f"Snapptrip: {counter}")
-            
-            len_uuid_hotels = len(uuid_hotels)
-            for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
-                if uuid:
-                    logger.info(f"{uuid}: {i}/{len_uuid_hotels}")
-
-                    site_rooms = {}
-
-                    len_hotels = len(hotels)
-                    for j, hotel in enumerate(hotels):
-                        logger.info(f" UUID - {j}/{len_hotels}")
-
-                        rooms = scrape_hotel(hotel)
-                        site_rooms[hotel['hotel_from']] = rooms
-
-                    if len(site_rooms.keys()) == 2:
-                        compare_hotel_rooms(crawl_start_datetime=crawl_start_datetime, **site_rooms)
-                    elif len(site_rooms.keys()) == 1:
-                        add_reserved_hotel(list(site_rooms.values())[0])
-                    else:
-                        logger.error("unhandleable count of sites.")
-
-            none_uuid_hotels = uuid_hotels.get(None, [])
-            len_none_uuid = len(none_uuid_hotels)
-            
-            front_i, end_i = 0, len_none_uuid
-            while front_i < end_i:
-                end_i -= 1
-                
-                logger.info(f" no UUID - {front_i*2}/{len_none_uuid}")
-                
-                scrape_hotel(none_uuid_hotels[front_i])
-                if not front_i == end_i:
-                    scrape_hotel(none_uuid_hotels[end_i])
-
-                front_i += 1
-
-        with open(scrape_stat_path, 'w') as f:
-            f.write(str(day_offset+1))
+        snapp_hotels_id = scrape_day(day_offset, visited_snapp_hotels)
+        visited_snapp_hotels.update(snapp_hotels_id)
 
     with open(scrape_stat_path, 'w') as f:
         f.write("0")
+
+
+def scrape_day(day_offset, visited_snapp_hotels):
+
+    for city_name in TO_SCRAPE_CITIES:
+        logger.info(f"City: {city_name}")
+
+        snapp_hotels = scrape_city(city_name, visited_snapp_hotels, day_offset)
+        visited_snapp_hotels.update(snapp_hotels)
+
+    with open(scrape_stat_path, 'w') as f:
+            f.write(str(day_offset+1))
+
+    return visited_snapp_hotels
+
+
+def scrape_city(city_name, visited_snapp_hotels, day_offset):
+    htlFaName_htlUUID = get_htlFaName_htlUUID(city_name)
+
+    uuid_hotels = get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID)
+    snapp_hotels, uuid_hotels = get_snapptrip_hotels(city_name, visited_snapp_hotels, day_offset, htlFaName_htlUUID, uuid_hotels)
+
+    len_uuid_hotels = len(uuid_hotels)
+    for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
+        if uuid:
+            match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels)
+
+    scrape_no_uuid_hotels(uuid_hotels)
+
+    return snapp_hotels
 
 
 def get_htlFaName_htlUUID(city):
@@ -146,6 +109,83 @@ def get_htlFaName_htlUUID(city):
         group[row['htlFaName']] = row['htlUUID']
     
     return group
+
+
+def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
+    uuid_hotels = defaultdict(list)
+    counter = 0
+
+    alibaba_hotels = a_get_city_hotels(city_name, day_offset)
+    for hotel in alibaba_hotels:
+        hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
+        uuid_hotels[hotel_uuid].append(hotel)
+        counter += 1
+
+    logger.info(f"Alibaba: {counter}")
+    return uuid_hotels
+
+
+def get_snapptrip_hotels(city_name, visited_snapp_hotels, day_offset, htlFaName_htlUUID, uuid_hotels):
+    counter = 0
+    snapptrip_hotels = s_get_city_hotels(en_fa_cities[city_name], day_offset)
+    for hotel in snapptrip_hotels:
+        hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
+        counter += 1
+        
+        if hotel_uuid and hotel_uuid in visited_snapp_hotels:
+            continue
+
+        uuid_hotels[hotel_uuid].append(hotel)
+        visited_snapp_hotels.add(hotel_uuid)
+    
+    logger.info(f"Snapptrip: {counter}")
+
+    return visited_snapp_hotels, uuid_hotels 
+
+
+def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels):
+    logger.info(f"{uuid}: {i}/{len_uuid_hotels}")
+
+    site_rooms = {}
+
+    len_hotels = len(hotels)
+    for j, hotel in enumerate(hotels):
+        logger.info(f" UUID - {j}/{len_hotels}")
+
+        rooms = scrape_hotel(hotel)
+        site_rooms[hotel['hotel_from']] = rooms
+
+    try:
+        if len(site_rooms.keys()) == 2:
+            compare_hotel_rooms(crawl_start_datetime=crawl_start_datetime, **site_rooms)
+        elif len(site_rooms.keys()) == 1:
+            add_reserved_hotel(list(site_rooms.values())[0])
+        else:
+            logger.error("unhandleable count of sites.")
+    except Exception as e:
+        logger.critical(f"Unhandled error on hotels compare.\n{e}", stack_info=True)
+
+    return site_rooms
+
+
+def scrape_no_uuid_hotels(uuid_hotels):
+    none_uuid_hotels = uuid_hotels.get(None, [])
+    len_none_uuid = len(none_uuid_hotels)
+    
+    front_i, end_i = 0, len_none_uuid
+    while front_i < end_i:
+        end_i -= 1
+        
+        logger.info(f" no UUID - {front_i*2}/{len_none_uuid}")
+        
+        try:
+            scrape_hotel(none_uuid_hotels[front_i])
+            if not front_i == end_i:
+                scrape_hotel(none_uuid_hotels[end_i])
+        except Exception as e:
+            logger.critical(f"Unhandled error on no uuid hotel.\n{e}", stack_info=True)
+
+        front_i += 1
 
 
 def a_get_city_hotels(city_name: str, day_offset: int) -> list:
