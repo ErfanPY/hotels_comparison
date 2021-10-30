@@ -338,7 +338,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                             identifier_condition={
                                 "avl_romID": roomID_and_UUID['romID'],
                                 "avlDate": day['date'],
-                                "avlInsertionDate": datetime.now(),
+                                "avlCrawlTime": CRAWL_START_DATETIME,
                             },
                             conn=conn
                         )

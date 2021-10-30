@@ -268,7 +268,7 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
                 identifier_condition={
                     "avl_romID": room_id_and_uuid['romID'],
                     "avlDate": date_from,
-                    "avlInsertionDate": now,
+                    "avlCrawlTime": CRAWL_START_DATETIME,
                 },
                 conn=conn
             )
