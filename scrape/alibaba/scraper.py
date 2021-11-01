@@ -54,7 +54,7 @@ if START_DAY_OFFSET == 0 and os.path.exists(scrape_stat_path):
         START_DAY_OFFSET = int(f.readline().strip())
 
 SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME", "0"))
-CRAWL_START_DATETIME = datetime.now()
+CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
 
 def main(proxy_host:str=None, proxy_port:int=None):

@@ -51,7 +51,7 @@ else:
 SLEEP_TIME = int(os.environ.get("SNAPPTRIP_SCRAPPER_SLEEP_TIME", "4"))
 
 BASE_URL = 'https://www.snapptrip.com/'
-CRAWL_START_DATETIME = datetime.now()
+CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
 
 def main(proxy_host:str=None, proxy_port:int=None):
