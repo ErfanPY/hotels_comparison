@@ -230,13 +230,20 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
     Returns:
         None
     """
+
+    additives = []
+    # extra-bed should be before breakfast if needed
+    if meal_plan == "BB":
+        additives.append("breakfast")
+
     while True:
         with get_db_connection() as conn:
             room_data = {
                 'romName': room['name'],
                 "romType": get_room_types(room['name']),
                 'rom_htlID': hotel_id,
-                'romMealPlan': meal_plan
+                'romMealPlan': meal_plan,
+                "romAdditives": json.dumps(additives)
             }
             room_id_and_uuid = insert_select_id(
                 table='tblRooms',
