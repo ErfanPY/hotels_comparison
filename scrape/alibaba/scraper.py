@@ -208,10 +208,16 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
         for room in room_type["rooms"]:
             
 
-            room_ID, room_UUID, room_data = save_room(room=room, hotel_id=hotel_id, date_from=date_from,
+            romID, room_UUID, room_data = save_room(room=room, hotel_id=hotel_id, date_from=date_from,
                 meal_plan=meal_plan)
             rooms_counter += 1
             
+            room_data.update({
+                "romID": romID,
+                "room_UUID": room_UUID,
+                "htlFrom": "A"
+            })
+
             res_rooms.append(room_data)
 
     # logger.info("Alibaba - Hotel: {} has {} rooms.".format(hotel['enName'], rooms_counter))

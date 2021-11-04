@@ -302,7 +302,8 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                     time.sleep(SLEEP_TIME)
                     continue
                 room_data['room_UUID'] = roomID_and_UUID['romUUID']
-                room_data['room_ID'] = roomID_and_UUID['romID']
+                room_data['romID'] = roomID_and_UUID['romID']
+                room_data['htlFrom'] = "S"
                 
                 room_calender_content = get_content(
                     "https://www.snapptrip.com/shopping/{}/calendar/{}".format(
