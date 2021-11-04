@@ -388,10 +388,14 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:list) -> None:
             
             stren_point = stren_point.text.strip() if stren_point else ""
             weak_point = weak_point.text.strip() if weak_point else ""
-
+            
+            # single qoute esacpe
+            stren_point = re.sub("'", "''", stren_point)
+            weak_point = re.sub("'", "''", weak_point)
+            comment_text = re.sub("'", "''", comment_text)
+            
             room_id = rooms_name_id.get(room_name)
             if not room_id:
-                # room_id = 0
                 continue
             try:
                 insert_select_id(
