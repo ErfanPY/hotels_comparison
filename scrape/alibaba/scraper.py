@@ -214,7 +214,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
             
             room_data.update({
                 "romID": romID,
-                "room_UUID": room_UUID,
+                "romUUID": room_UUID,
                 "htlFrom": "A"
             })
 

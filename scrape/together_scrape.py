@@ -272,10 +272,10 @@ def compare_hotel_rooms(alibaba, snapptrip, crawl_start_datetime):
     uuid_room = defaultdict(list)
 
     for a in alibaba:
-        uuid_room[a.get('room_UUID')].append(a)
+        uuid_room[a.get('romUUID')].append(a)
 
     for s in snapptrip:
-        uuid_room[s.get('room_UUID')].append(s)
+        uuid_room[s.get('romUUID')].append(s)
 
     for uuid, rooms in uuidـrooms.items():
         if not uuid is None:

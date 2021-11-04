@@ -90,6 +90,8 @@ def make_romUUID_romIDs(rooms):
         past[htlFrom] = romID
         romUUID_romIDs[romUUID] = past
 
+    return romUUID_romIDs
+
 
 def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
     prices_alrInfo = {

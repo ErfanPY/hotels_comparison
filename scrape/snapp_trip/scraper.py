@@ -301,7 +301,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                 if roomID_and_UUID == -1:
                     time.sleep(SLEEP_TIME)
                     continue
-                room_data['room_UUID'] = roomID_and_UUID['romUUID']
+                room_data['romUUID'] = roomID_and_UUID['romUUID']
                 room_data['romID'] = roomID_and_UUID['romID']
                 room_data['htlFrom'] = "S"
                 
