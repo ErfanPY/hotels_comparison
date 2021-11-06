@@ -1,8 +1,10 @@
 import json
+import logging
 import time
 from scrape.db_util import custom, get_db_connection, insert_select_id
 from scrape.common_utils import mgroupby
 
+logger = logging.getLogger("main_logger")
 
 def main():
     rooms_data = []
@@ -49,8 +51,10 @@ def main():
         lambda room:"{}_{}".format(room['romUUID'], room['avlDate'])
     )
 
+    count_roomUUID = len(room_UUID_groups.items())
+    for i, (roomUUID, rooms_group) in enumerate(room_UUID_groups.items()):
+        logger.info(f"{i}/{count_roomUUID}")
 
-    for roomUUID, rooms_group in room_UUID_groups.items():
         htlFrom_groups = mgroupby(
             rooms_group,
             lambda room:room['htlFrom'],
@@ -61,12 +65,16 @@ def main():
             single_room = list(htlFrom_groups.values())[0][0]
             single_rooms.append(single_room)
         elif len(htlFrom_groups.keys()) == 2:
+            crawl_start_datetime = htlFrom_groups['S'][0]['avlInsertionDate'].strftime("%Y-%m-%d %H:00:00")
+
             while True:
                 with get_db_connection() as conn:
                     err_check = compare_rooms(
                         alibaba_room=htlFrom_groups['A'][0],
                         snapptrip_room=htlFrom_groups['S'][0],
-                        conn=conn
+                        conn=conn,
+                        crawsl_start_time=crawl_start_datetime,
+                        insertion_datetime=htlFrom_groups['S'][0]['avlInsertionDate']
                     )
                 if not err_check == -1:
                     break
@@ -75,7 +83,12 @@ def main():
             print("Non handled condition, {}".format(str(htlFrom_groups)))
 
     with get_db_connection() as conn:
-        add_single_available_rooms(rooms=single_rooms, romUUID_romIDs=romUUID_romIDs, conn=conn)
+        add_single_available_rooms(
+            rooms=single_rooms,
+            romUUID_romIDs=romUUID_romIDs,
+            conn=conn,
+            crawsl_start_time=crawl_start_datetime,
+        )
 
 
 def make_romUUID_romIDs(rooms):
@@ -93,7 +106,7 @@ def make_romUUID_romIDs(rooms):
     return romUUID_romIDs
 
 
-def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
+def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None, insertion_datetime=None):
     prices_alrInfo = {
         'base_price':{
             alibaba_room['romID']: alibaba_room['avlBasePrice'],
@@ -105,96 +118,116 @@ def compare_rooms(alibaba_room, snapptrip_room, conn, crawsl_start_time=None):
         }
     }
     romUUID = alibaba_room['romUUID']
-
+    room_alret = {
+        "alrRoomUUID": romUUID, 
+        "alrOnDate": alibaba_room['avlDate'],
+        "alrCrawlTime": crawsl_start_time,
+        "alrA_romID": alibaba_room['romID'],
+        "alrS_romID": snapptrip_room['romID'],
+    }
+    
     if not alibaba_room['avlBasePrice'] == snapptrip_room['avlBasePrice']:
 
-        alrType = 'P'
-        alrInfo = prices_alrInfo
-        room_alret = {
-            "alrRoomUUID": romUUID, 
-            "alrOnDate": alibaba_room['avlDate'],
-            "alrCrawlTime": crawsl_start_time,
-            "alrType": alrType,
-            "alrA_romID": alibaba_room['romID'],
-            "alrS_romID": snapptrip_room['romID'],
-            'alrInfo': json.dumps(alrInfo)
-        }
+        err_check = save_price_alert(conn, insertion_datetime, prices_alrInfo, room_alret)
 
-        err_check = insert_select_id(
-            table='tblAlert',
-            key_value=room_alret,
-            conn=conn
-        )
-
-        if err_check == -1:
-            return -1
-    if not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
-        alrType = 'D'
-        alrInfo = prices_alrInfo
-
-        err_check = insert_select_id(table='tblAlert', key_value={
-            "alrRoomUUID": romUUID, 
-            "alrOnDate": alibaba_room['avlDate'],
-            "alrCrawlTime": crawsl_start_time,
-            "alrType": alrType,
-            "alrA_romID": alibaba_room['romID'],
-            "alrS_romID": snapptrip_room['romID'],
-            'alrInfo': json.dumps(alrInfo)
-        }, conn=conn)
-        
         if err_check == -1:
             return -1
     
-    if not alibaba_room['romMealPlan'] == snapptrip_room['romMealPlan']:
-        alrType = 'O'
-        alrInfo = prices_alrInfo
-        alrInfo["options"] = {
-            alibaba_room['romID']: [alibaba_room['romMealPlan']],
-            snapptrip_room['romID']: [snapptrip_room['romMealPlan']],
-        }
+    if not alibaba_room['avlDiscountPrice'] == snapptrip_room['avlDiscountPrice']:
+        err_check = save_discount_alert(conn, insertion_datetime, prices_alrInfo, room_alret)
 
-        err_check = insert_select_id(table='tblAlert', key_value={
-            "alrRoomUUID": romUUID, 
-            "alrOnDate": alibaba_room['avlDate'],
-            "alrCrawlTime": crawsl_start_time,
-            "alrType": alrType,
-            "alrA_romID": alibaba_room['romID'],
-            "alrS_romID": snapptrip_room['romID'],
-            'alrInfo': json.dumps(alrInfo)
-        }, conn=conn)
-        
         if err_check == -1:
             return -1
-
-    set_a = set(alibaba_room['romAdditives'])
-    set_b = set(snapptrip_room['romAdditives'])
+    
+    set_a = set(json.loads(alibaba_room['romAdditives']))
+    set_b = set(json.loads(snapptrip_room['romAdditives']))
 
     diff_a = set_a-set_b
     diff_b = set_b-set_a
 
     if diff_a or diff_b:
-        alrType = 'O'
-        alrInfo = prices_alrInfo
-        alrInfo["options"] = {
-            alibaba_room['romID']: list(diff_a),
-            snapptrip_room['romID']: list(diff_b),
-        }
-
-        err_check = insert_select_id(table='tblAlert', key_value={
-            "alrRoomUUID": romUUID, 
-            "alrOnDate": alibaba_room['avlDate'],
-            "alrCrawlTime": crawsl_start_time,
-            "alrType": alrType,
-            "alrA_romID": alibaba_room['romID'],
-            "alrS_romID": snapptrip_room['romID'],
-            'alrInfo': json.dumps(alrInfo)
-        }, conn=conn)
+        err_check = save_option_alert(alibaba_room, snapptrip_room, conn, insertion_datetime, prices_alrInfo, room_alret, diff_a, diff_b)
         
         if err_check == -1:
             return -1
 
+
+def save_price_alert(conn, insertion_datetime, prices_alrInfo, room_alret):
+    alrType = 'P'
+    alrInfo = prices_alrInfo
+
+    room_alret.update({
+            "alrType": alrType,
+            "alrInfo": json.dumps(alrInfo)
+        })
+        
+    identier_dict = room_alret
+    if insertion_datetime:
+        room_alret["alrDateTime"] = insertion_datetime
+
+    err_check = insert_select_id(
+            table='tblAlert',
+            key_value=room_alret,
+            conn=conn,
+            identifier_condition=identier_dict
+        )
+    
+    return err_check
+
+
+def save_discount_alert(conn, insertion_datetime, prices_alrInfo, room_alret):
+    alrType = 'D'
+    alrInfo = prices_alrInfo
+
+    room_alret.update({
+            "alrType": alrType,
+            "alrInfo": json.dumps(alrInfo)
+        })
+
+    identier_dict = room_alret
+    if insertion_datetime:
+        room_alret["alrDateTime"] = insertion_datetime
+
+    err_check = insert_select_id(
+            table='tblAlert',
+            key_value=room_alret,
+            conn=conn,
+            identifier_condition=identier_dict
+        )
+    
+    return err_check
+
+
+def save_option_alert(alibaba_room, snapptrip_room, conn, insertion_datetime, prices_alrInfo, room_alret, diff_a, diff_b):
+    alrType = 'O'
+    alrInfo = prices_alrInfo
+    alrInfo["options"] = {
+            alibaba_room['romID']: list(diff_a),
+            snapptrip_room['romID']: list(diff_b),
+        }
+
+    room_alret.update({
+            "alrType": alrType,
+            "alrInfo": json.dumps(alrInfo)
+        })
+
+    identier_dict = room_alret
+    if insertion_datetime:
+        room_alret["alrDateTime"] = insertion_datetime
+
+    err_check = insert_select_id(
+            table='tblAlert',
+            key_value=room_alret,
+            conn=conn,
+            identifier_condition=identier_dict
+        )
+    
+    return err_check
+
+
 def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=None):
     for room in rooms:
+        insertion_datetime = room['avlInsertionDate']
         romUUID = room['romUUID']
 
         alrInfo = {
@@ -206,14 +239,18 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
             }
         }
 
-        # TODO
-        try:
-            alrA_romID = romUUID_romIDs[romUUID]['A']
-            alrS_romID = romUUID_romIDs[romUUID]['S']
-        except KeyError:
-            return
+        roomIDs = romUUID_romIDs.get(romUUID)
+        if roomIDs is None:
+            logger.critical(f"Room doesn't exist in no site. romUUID: {romUUID}")
+            continue
 
-        insert_select_id(table='tblAlert', key_value={
+        alrA_romID = roomIDs.get('A')
+        alrS_romID = roomIDs.get('S')
+        if alrA_romID is None or alrS_romID is None:
+            logger.critical(f"Room doesn't exist in other site. romUUID: {romUUID}")
+            continue
+
+        room_alret = {
             "alrRoomUUID": romUUID, 
             "alrOnDate": room['avlDate'],
             "alrCrawlTime": crawsl_start_time,
@@ -221,7 +258,19 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
             "alrA_romID": alrA_romID,
             "alrS_romID": alrS_romID,
             "alrInfo": json.dumps(alrInfo)
-        }, conn=conn)
+        }
+
+        identier_dict = room_alret
+        if insertion_datetime:
+            room_alret["alrDateTime"] = insertion_datetime
+
+        insert_select_id(
+            table='tblAlert',
+            key_value=room_alret,
+            conn=conn,
+            identifier_condition=identier_dict
+        )
+
 
 if __name__ == "__main__":
     main()        
