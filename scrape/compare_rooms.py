@@ -6,15 +6,17 @@ from scrape.common_utils import mgroupby
 
 logger = logging.getLogger("main_logger")
 
-def main():
+def main(crawl_date_start=None, crawl_date_end=None):
     rooms_data = []
 
     single_rooms = []
     
     get_romUUIDs_query = """
+        SELECT htlFrom, romID, romUUID
     SELECT htlFrom, romID, romUUID 
-    FROM tblRooms
-    INNER JOIN tblHotels on htlID = rom_htlID
+        SELECT htlFrom, romID, romUUID
+        FROM tblRooms
+        INNER JOIN tblHotels on htlID = rom_htlID
     ;
     """
     
@@ -31,11 +33,20 @@ def main():
             INNER JOIN tblAvailabilityInfo ON romID = avl_romID
             INNER JOIN tblHotels ON htlID = rom_htlID 
             WHERE NOT romUUID IS NULL
+                AND  (ISNULL(%s) OR avlCrawlTime >= %s)
+                AND  (ISNULL(%s) OR avlCrawlTime <= %s)
             ;
         """
-
+    #TODO AND avlCrawlTime >= "2021-11-09 00:00:00" AND avlCrawlTime <= "2021-11-09 12:00:00"
     with get_db_connection() as conn:
-        rooms_data = custom(query_string=rooms_data_query, conn=conn)
+        rooms_data = custom(
+            query_string=rooms_data_query,
+            data= [
+                crawl_date_start, crawl_date_start,
+                crawl_date_end, crawl_date_end
+            ],
+            conn=conn
+        )
 
     rom_identifier_groups = mgroupby(
         rooms_data,
@@ -91,7 +102,6 @@ def main():
             rooms=single_rooms,
             romUUID_romIDs=romUUID_romIDs,
             conn=conn,
-            crawsl_start_time=crawl_start_datetime,
         )
 
 
@@ -232,6 +242,10 @@ def save_option_alert(alibaba_room, snapptrip_room, conn, insertion_datetime, pr
 def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=None):
     for room in rooms:
         insertion_datetime = room['avlInsertionDate']
+        
+        if crawsl_start_time is None:
+            crawsl_start_time = insertion_datetime.strftime("%Y-%m-%d %H:00:00")
+        
         romUUID = room['romUUID']
 
         alrInfo = {
