@@ -53,7 +53,6 @@ def main():
 
     count_roomUUID = len(room_UUID_groups.items())
     for i, (roomUUID, rooms_group) in enumerate(room_UUID_groups.items()):
-        logger.info(f"{i}/{count_roomUUID}")
 
         htlFrom_groups = mgroupby(
             rooms_group,
@@ -64,6 +63,8 @@ def main():
         if len(htlFrom_groups.keys()) == 1:
             single_room = list(htlFrom_groups.values())[0][0]
             single_rooms.append(single_room)
+            logger.info(f"{i}/{count_roomUUID} - single - {single_room['romUUID']} - {single_room['avlDate']} - {single_room['avlInsertionDate']}")
+
         elif len(htlFrom_groups.keys()) == 2:
             crawl_start_datetime = htlFrom_groups['S'][0]['avlInsertionDate'].strftime("%Y-%m-%d %H:00:00")
 
@@ -79,8 +80,11 @@ def main():
                 if not err_check == -1:
                     break
                 time.sleep(2)
+
+            logger.info(f"{i}/{count_roomUUID} - dual")
+
         else:
-            print("Non handled condition, {}".format(str(htlFrom_groups)))
+            logger.critical("Non handled condition, {}".format(str(htlFrom_groups)))
 
     with get_db_connection() as conn:
         add_single_available_rooms(
