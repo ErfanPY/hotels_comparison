@@ -86,8 +86,6 @@ def get_city_hotels(city_name, day_offset=0):
         hotels = search_page_soup.select_one(".hotels-data").findAll("li", {'data-hotel-id': True})
         
         for hotel in hotels:
-            if "ظرفیت تکمیل" in hotel.text or hotel.select_one(".badge-fill-danger"):
-                break
             
             parsed_hotel = parse_hotel(hotel, city_name)
             all_hotels.append(parsed_hotel)
