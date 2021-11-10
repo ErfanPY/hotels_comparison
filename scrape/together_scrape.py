@@ -282,7 +282,6 @@ def compare_hotel_rooms(alibaba, snapptrip, crawl_start_datetime):
             while True:
                 with get_db_connection() as conn:
 
-                    #TODO How this thing were working before adding conn?
                     err_check = compare_rooms(
                         alibaba_room=rooms[0],
                         snapptrip_room=rooms[-1],
