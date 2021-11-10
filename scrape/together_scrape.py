@@ -72,7 +72,7 @@ def scrape_day(day_offset, visited_snapp_hotels):
         visited_snapp_hotels.update(snapp_hotels)
 
     with open(scrape_stat_path, 'w') as f:
-            f.write(str(day_offset+1))
+        f.write(str(day_offset+1))
 
     return visited_snapp_hotels
 
