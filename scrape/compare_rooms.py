@@ -13,8 +13,6 @@ def main(crawl_date_start=None, crawl_date_end=None):
     
     get_romUUIDs_query = """
         SELECT htlFrom, romID, romUUID
-    SELECT htlFrom, romID, romUUID 
-        SELECT htlFrom, romID, romUUID
         FROM tblRooms
         INNER JOIN tblHotels on htlID = rom_htlID
     ;
@@ -37,7 +35,7 @@ def main(crawl_date_start=None, crawl_date_end=None):
                 AND  (ISNULL(%s) OR avlCrawlTime <= %s)
             ;
         """
-    #TODO AND avlCrawlTime >= "2021-11-09 00:00:00" AND avlCrawlTime <= "2021-11-09 12:00:00"
+
     with get_db_connection() as conn:
         rooms_data = custom(
             query_string=rooms_data_query,
@@ -281,14 +279,15 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
         identier_dict = room_alret
         if insertion_datetime:
             room_alret["alrDateTime"] = insertion_datetime
-
-        insert_select_id(
-            table='tblAlert',
-            key_value=room_alret,
-            conn=conn,
-            identifier_condition=identier_dict
-        )
-
+        try:
+            insert_select_id(
+                table='tblAlert',
+                key_value=room_alret,
+                conn=conn,
+                identifier_condition=identier_dict
+            )
+        except Exception as e:
+            print("duplication, ", ", ".join([f"{k}: {v}" for k, v in identier_dict.items()]))
 
 if __name__ == "__main__":
-    main()        
+    main(crawl_date_start="2021-11-10 00:00:00")
