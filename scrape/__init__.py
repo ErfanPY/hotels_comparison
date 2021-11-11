@@ -1,4 +1,7 @@
 from logging.config import dictConfig
+import os
+from dotenv import load_dotenv
+load_dotenv("./.env")
 
 LOGGING_CONFIG = {
     'version': 1,
@@ -15,11 +18,22 @@ LOGGING_CONFIG = {
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',  
         },
-        'file': {
-            'level': 'ERROR',
+        'email': {
+            'level': 'CRITICAL',
             'formatter': 'default_fromatter',
-            'class': 'logging.FileHandler',
-            'filename': 'log.log',
+            'class': 'logging.handlers.SMTPHandler',
+            'mailhost': [
+                os.environ.get("EMAIL_HOST"),
+                int(os.environ.get("EMAIL_PORT"))
+            ],
+            'fromaddr': os.environ.get("EMAIL_USER_ADDR"),
+            'toaddrs': os.environ.get("EMAIL_TO_ADDR", "").split(","),
+            'credentials': [
+                os.environ.get("EMAIL_USER_ADDR"),
+                os.environ.get("EMAIL_PASSWORD")
+            ],
+            'subject': 'Alibaba scrapper critical error.',
+            'secure': []
         },
         'rotatingFile': {
             'class': 'logging.handlers.RotatingFileHandler',
@@ -37,12 +51,25 @@ LOGGING_CONFIG = {
             'level': 'INFO',
             'propagate': False
         },
-        '__main__': { 
+        'debug_logger': { 
             'handlers': ['default', 'rotatingFile'],
             'level': 'DEBUG',
             'propagate': False
         },
+        'email_logger': {
+            'handlers': ['email', 'default', 'rotatingFile'],
+            'level': 'CRITICAL',
+            'propagate': False
+        }
     }
 }
 
 dictConfig(LOGGING_CONFIG)
+
+print(
+    os.environ.get("EMAIL_HOST"),
+    os.environ.get("EMAIL_PORT"),
+    os.environ.get("EMAIL_USER_ADDR"),
+    os.environ.get("EMAIL_TO_ADDR", ""),
+    os.environ.get("EMAIL_PASSWORD")
+)

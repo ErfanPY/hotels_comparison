@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 import socket
 import time
 from datetime import datetime
@@ -9,7 +10,7 @@ import socks
 from scrape.db_util import get_db_connection, insert_select_id
 from scrape.common_utils import get_room_types
 
-from .network_utils import *
+from .network_utils import get_search_session_id, get_search_data, get_hotel_rooms_data
 
 logger = logging.getLogger("main_logger")
 
@@ -65,13 +66,16 @@ def main(proxy_host:str=None, proxy_port:int=None):
             city_id = city_ids[city_name]
             session_id, date_from = get_search_session_id(city_id, day_offset)
             
+            if session_id == -1:
+                logger.error("Alibaba - Getting city search failed: city_name:{}, day_offset:{}".format(city_name, day_offset))
+                continue
+            
             logger.info('Alibab - scraping city: {} on day: {}'.format(city_name, day_offset))
 
-            if session_id == -1:
-                logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
-                continue
-
             hotels_data = get_city_hotels(session_id, city_name)
+            
+            if hotels_data == -1:
+                continue
 
             for hotel in hotels_data:
                 time.sleep(SLEEP_TIME)
@@ -104,7 +108,7 @@ def get_city_hotels(session_id, city_name, date_from=None, day_offset=None):
     while not completed:
         hotels_data = get_search_data(session_id)
         
-        if hotels_data['error']:
+        if hotels_data == -1 or hotels_data['error']:
             logger.error("Alibaba - Getting city hotels failed: city_name:{}".format(city_name))
             return -1
         
@@ -183,7 +187,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
         hotel_rooms_data = get_hotel_rooms_data(session_id, hotel['id'])
         if hotel_rooms_data == -1:
             logger.error("Alibaba - Getting city search failed - max sleep : city_name:{}".format(city_name))
-            return -1
+            return -1, -1
       
         if hotel_rooms_data.get('statusCode') == 408:
             city_id = city_ids[city_name]
@@ -191,7 +195,7 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
 
             if session_id == -1:
                 logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
-                return -1
+                return -1, -1
 
             logger.error(f"Session Expired - city-id: {city_id}, day: {day_offset}, session: {session_id[:10]}...{session_id[-10:]}")
         else:

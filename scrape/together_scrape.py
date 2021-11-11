@@ -69,6 +69,10 @@ def scrape_day(day_offset, visited_snapp_hotels):
         logger.info(f"City: {city_name}")
 
         snapp_hotels = scrape_city(city_name, visited_snapp_hotels, day_offset)
+        
+        if snapp_hotels == -1:
+            continue
+
         visited_snapp_hotels.update(snapp_hotels)
 
     with open(scrape_stat_path, 'w') as f:
@@ -81,7 +85,14 @@ def scrape_city(city_name, visited_snapp_hotels, day_offset):
     htlFaName_htlUUID = get_htlFaName_htlUUID(city_name)
 
     uuid_hotels = get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID)
+    
+    if uuid_hotels == -1:
+        return -1
+
     snapp_hotels, uuid_hotels = get_snapptrip_hotels(city_name, visited_snapp_hotels, day_offset, htlFaName_htlUUID, uuid_hotels)
+
+    if snapp_hotels == -1:
+        return -1
 
     len_uuid_hotels = len(uuid_hotels)
     for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
@@ -116,6 +127,10 @@ def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
     counter = 0
 
     alibaba_hotels = a_get_city_hotels(city_name, day_offset)
+    
+    if alibaba_hotels == -1:
+        return -1
+
     for hotel in alibaba_hotels:
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
         uuid_hotels[hotel_uuid].append(hotel)
@@ -128,6 +143,10 @@ def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
 def get_snapptrip_hotels(city_name, visited_snapp_hotels, day_offset, htlFaName_htlUUID, uuid_hotels):
     counter = 0
     snapptrip_hotels = s_get_city_hotels(en_fa_cities[city_name], day_offset)
+    
+    if snapptrip_hotels == -1:
+        return -1, -1
+    
     for hotel in snapptrip_hotels:
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
         counter += 1
@@ -153,6 +172,10 @@ def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels):
         logger.info(f" UUID - {j}/{len_hotels}")
 
         rooms = scrape_hotel(hotel)
+        
+        if rooms == -1:
+            continue
+
         site_rooms[hotel['hotel_from']] = rooms
 
     try:

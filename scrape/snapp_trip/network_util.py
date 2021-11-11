@@ -4,6 +4,7 @@ from urllib.request import Request, quote, urlopen
 from time import sleep
 
 from bs4 import BeautifulSoup
+from scrape.critical_log import log_critical_error
 
 logger = logging.getLogger("main_logger")
 
@@ -18,6 +19,7 @@ def get_content_make_soup(url:str, headers:dict={}, **kwargs) -> BeautifulSoup:
         
         return soup
 
+
 def get_content(url:str, headers:dict={}) -> bytes:
     default_headers = {'User-Agent' : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0"}
     headers.update(default_headers)
@@ -26,8 +28,7 @@ def get_content(url:str, headers:dict={}) -> bytes:
         url_parts = urlparse(url)
         url = url_parts._replace(path=quote(url_parts.path)).geturl()
     
-    sec = 2
-
+    sleep_time = 1
     while True:    
         try:
             req = Request(url, headers=headers)
@@ -38,6 +39,9 @@ def get_content(url:str, headers:dict={}) -> bytes:
 
         except Exception as e:
             logger.error(f"Getting url failed, url: {url}, Error: {e}")
+            if sleep_time >= 120:
+                log_critical_error(f"Snapptrip unhandleable network error. (url: {url})")
+                return -1
 
-        sleep(sec)
-        sec += 1
+        sleep(sleep_time)
+        sleep_time *= 2

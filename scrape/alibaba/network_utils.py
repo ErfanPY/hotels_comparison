@@ -4,6 +4,7 @@ import logging
 import time
 
 import requests
+from scrape.critical_log import log_critical_error
 
 logger = logging.getLogger("main_logger")
 
@@ -18,11 +19,15 @@ def get_search_session_id(city_id, offset):
 
     url = "https://ws.alibaba.ir/api/v1/hotel/search"
 
-    sleep_time = 2
+    sleep_time = 1
     while True:
+        if sleep_time >= 120:
+            log_critical_error("Alibaba unhandleable network error. (session id endpoint)")
+            return -1, -1
+
         try:
             response = requests.post(url, data=data, timeout=1000)
-
+            response.raise_for_status()
             if response.status_code == 429:
                 logger.error("Alibaba - session - Too many request")
                 continue
@@ -40,9 +45,10 @@ def get_search_session_id(city_id, offset):
 
         except Exception as e:
             logger.error("Alibaba - Couldn't load json - err:{} - sleep_time:{}".format(e, sleep_time))
-            
+       
+
         time.sleep(sleep_time)
-        sleep_time += 1
+        sleep_time *= 2
 
 
 
@@ -51,8 +57,12 @@ def get_search_data(session_id):
     data = '{"sessionId":"'+session_id+'","limit":100,"skip":0,"sort":{"field":"score","order":-1},"filter":[]}'
     url = "https://ws.alibaba.ir/api/v1/hotel/result"
 
-    sleep_time = 2
+    sleep_time = 1
     while True:
+        if sleep_time >= 120:
+            log_critical_error("Alibaba unhandleable network error. (search endpoint)")
+            return -1
+        
         try:
             response = requests.post(url, data=data, timeout=100)
             if response.status_code == 429:
@@ -64,9 +74,10 @@ def get_search_data(session_id):
 
         except Exception as e:
             logger.error("Alibaba - get_search_data - err:{} - sleep_time:{}".format(e, sleep_time))
-           
+        
+
         time.sleep(sleep_time)
-        sleep_time += 1
+        sleep_time *= 2
 
 
 def get_hotel_rooms_data(session_id, hotel_id):
@@ -75,8 +86,12 @@ def get_hotel_rooms_data(session_id, hotel_id):
     
     data = '{"sessionId":"'+session_id+'","hotelId":"'+hotel_id+'"}'
 
-    sleep_time = 2
+    sleep_time = 1
     while True:
+        if sleep_time >= 120:
+            log_critical_error("Alibaba unhandleable network error. (rooms endpoint)")
+            return -1
+        
         try:
             response = requests.post(url, data=data, timeout=100)
             if response.status_code == 429:
@@ -88,7 +103,6 @@ def get_hotel_rooms_data(session_id, hotel_id):
 
         except Exception as e:
             logger.error("Alibaba - rooms_data network error - err:{} - sleep_time:{}\n - url: {}\n - data: {}".format(e, sleep_time, url, data))
-            response_data = {'result':{'finalResult':True, "rooms":[]}}
 
         time.sleep(sleep_time)
-        sleep_time += 1
+        sleep_time *= 2

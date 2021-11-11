@@ -63,6 +63,8 @@ def main(proxy_host:str=None, proxy_port:int=None):
     for city_name in to_scrape_cities:
 
         hotels = get_city_hotels(city_name)
+        if hotels == -1:
+            continue
         scrape_hotels(city_name, hotels)
 
 
@@ -80,8 +82,7 @@ def get_city_hotels(city_name, day_offset=0):
         search_page_soup = get_content_make_soup(to_scrape_url)
         if search_page_soup == -1:
             logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
-            time.sleep(SLEEP_TIME)
-            continue
+            return -1
 
         hotels = search_page_soup.select_one(".hotels-data").findAll("li", {'data-hotel-id': True})
         
@@ -202,7 +203,7 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
 
     if hotel_soup == -1:
         logger.error("Snapptrip - Getting hotel content failed: url: {}".format(hotel_url))
-        return
+        return -1
 
     comments_soup = hotel_soup.select('#rating-hotel')[0]
 
@@ -310,7 +311,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
                 if room_calender_content == -1:
                     logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
                     time.sleep(SLEEP_TIME)
-                    continue
+                    break
 
                 room_calender = json.loads(room_calender_content)
 
