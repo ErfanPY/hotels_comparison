@@ -1,7 +1,5 @@
 from logging.config import dictConfig
 import os
-from dotenv import load_dotenv
-load_dotenv("./.env")
 
 LOGGING_CONFIG = {
     'version': 1,
@@ -65,11 +63,3 @@ LOGGING_CONFIG = {
 }
 
 dictConfig(LOGGING_CONFIG)
-
-print(
-    os.environ.get("EMAIL_HOST"),
-    os.environ.get("EMAIL_PORT"),
-    os.environ.get("EMAIL_USER_ADDR"),
-    os.environ.get("EMAIL_TO_ADDR", ""),
-    os.environ.get("EMAIL_PASSWORD")
-)
