@@ -81,9 +81,13 @@ def insert_select_id(table:str, key_value:dict, conn, id_field:str=None, identif
         else:
             select_id_query = "SELECT {} from {} WHERE {}".format(id_field, table, identifier_string)
             curs.execute(select_id_query)
-            row_id = curs.fetchone()[id_field]
+            row_id = curs.fetchone()
             
-            return str(row_id)
+            if not row_id:
+                logger.critical("No row was added to databse.")
+                return -1
+
+            return str(row_id[id_field])
 
 
 def custom(query_string:str, data:list=[], conn=None):
