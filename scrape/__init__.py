@@ -1,6 +1,8 @@
 from logging.config import dictConfig
 import os
 
+main_logger_level = 'DEBUG' if os.environ.get("SCRAPPER_DEBUG") == "1" else 'INFO'
+
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': True,
@@ -22,7 +24,7 @@ LOGGING_CONFIG = {
             'class': 'logging.handlers.SMTPHandler',
             'mailhost': [
                 os.environ.get("EMAIL_HOST"),
-                int(os.environ.get("EMAIL_PORT"))
+                int(os.environ.get("EMAIL_PORT", "0"))
             ],
             'fromaddr': os.environ.get("EMAIL_USER_ADDR"),
             'toaddrs': os.environ.get("EMAIL_TO_ADDR", "").split(","),
@@ -46,12 +48,7 @@ LOGGING_CONFIG = {
     'loggers': {
         'main_logger': {
             'handlers': ['default', 'rotatingFile'],
-            'level': 'INFO',
-            'propagate': False
-        },
-        'debug_logger': { 
-            'handlers': ['default', 'rotatingFile'],
-            'level': 'DEBUG',
+            'level': main_logger_level,
             'propagate': False
         },
         'email_logger': {

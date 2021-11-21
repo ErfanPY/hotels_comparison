@@ -5,3 +5,4 @@ __pycache__
 test_codes/
 *.txt
 scrape_stat/
+*.tmp

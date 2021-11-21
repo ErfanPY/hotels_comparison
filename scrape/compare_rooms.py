@@ -21,7 +21,6 @@ def main(crawl_date_start=None, crawl_date_end=None):
     with get_db_connection() as conn:
         result = custom(query_string=get_romUUIDs_query, conn=conn)
 
-
     romUUID_romIDs = make_romUUID_romIDs(result)
     
     rooms_data_query = """
@@ -238,7 +237,10 @@ def save_option_alert(alibaba_room, snapptrip_room, conn, insertion_datetime, pr
 
 
 def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=None):
-    for room in rooms:
+    len_rooms = len(rooms)
+    for i, room in enumerate(rooms):
+        if i%10==0:
+            print(f"Single: {i}/{len_rooms}")
         insertion_datetime = room['avlInsertionDate']
         
         if crawsl_start_time is None:
@@ -251,7 +253,7 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
                 room['romID']: room['avlBasePrice'],
             },
             'discount_price':{
-                room['romID']: room['avlBasePrice'],
+                room['romID']: room['avlDiscountPrice'],
             }
         }
 
