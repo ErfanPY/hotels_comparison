@@ -249,29 +249,30 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
         hotel_soup (BeautifulSoup): A BeautifulSoup contains hotel webpage.
         hotel_id (int): Hotel ID on our databse.
         hotel_site_id (str): hote ID on snapptrip site.
-
-    Returns:
-        dict: A mapping from room_name to database room_id
-        example:
-        
-        [['mashhad', 2], ['yazd', 5]]
     """
     rooms_div = hotel_soup.select_one("div.position-relative")
     rooms = rooms_div.select(".room-item")
 
+    res_rooms = []
+    rooms_name_id = {}
+    
     for i, room in enumerate(rooms):
-        res_rooms, rooms_name_id = parse_room(
+        res_room, room_name_id = get_parse_room(
             hotel_id,
             hotel_site_id,
             room
         )
-        logger.debug(f"Snapptrip, hotel: {hotel_id}, room: {i}/{len(rooms)}")
 
+        res_rooms.extend(res_room)
+        rooms_name_id.update(room_name_id)
+
+        logger.debug(f"Snapptrip, hotel: {hotel_id}, room: {i}/{len(rooms)}")
+    
     return res_rooms, rooms_name_id
 
 
 
-def parse_room(hotel_id, hotel_site_id, room):
+def get_parse_room(hotel_id, hotel_site_id, room):
     res_rooms = []
     rooms_name_id = {}
     unique_romID_crawl_insertion = set()
@@ -326,54 +327,50 @@ def parse_room(hotel_id, hotel_site_id, room):
 
         logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
         time.sleep(SLEEP_TIME)
-        
+    
     room_calender = json.loads(room_calender_content)
+    with get_db_connection() as conn:
+        for data in room_calender['data']:
+            for day in data['calendar']:
+                room_day_data = room_data.copy()
+                unique_check = f"{roomID_and_UUID['romID']}{day['date']}"
 
-    for data in room_calender['data']:
-        for day in data['calendar']:
-            room_day_data = room_data.copy()
-            unique_check = f"{roomID_and_UUID['romID']}{day['date']}"
-            
-            if unique_check in unique_romID_crawl_insertion:
-                continue
+                if unique_check in unique_romID_crawl_insertion:
+                    continue
 
-            unique_romID_crawl_insertion.add(unique_check)
+                unique_romID_crawl_insertion.add(unique_check)
 
-            base_price = day['prices']['local_price']*10
-            dsicount_price = day['prices']['local_price_off']*10
+                base_price = day['prices']['local_price']*10
+                dsicount_price = day['prices']['local_price_off']*10
 
-            if dsicount_price > base_price:
-                base_price, dsicount_price = dsicount_price, base_price
+                if dsicount_price > base_price:
+                    base_price, dsicount_price = dsicount_price, base_price
 
-            room_avl_info = {
-                "avl_romID": roomID_and_UUID['romID'],
-                "avlDate": day['date'],
-                "avlCrawlTime": CRAWL_START_DATETIME,
-                "avlInsertionDate": datetime.now(),
-                "avlBasePrice": day['prices']['local_price']*10,
-                "avlDiscountPrice": day['prices']['local_price_off']*10
-            }
+                room_avl_info = {
+                    "avl_romID": roomID_and_UUID['romID'],
+                    "avlDate": day['date'],
+                    "avlCrawlTime": CRAWL_START_DATETIME,
+                    "avlInsertionDate": datetime.now(),
+                    "avlBasePrice": day['prices']['local_price']*10,
+                    "avlDiscountPrice": day['prices']['local_price_off']*10
+                }
 
-            while True:
-                with get_db_connection() as conn:
-                    err_check = insert_select_id(
-                        table="tblAvailabilityInfo",
-                        key_value=room_avl_info,
-                        identifier_condition={
-                            "avl_romID": roomID_and_UUID['romID'],
-                            "avlDate": day['date'],
-                            "avlCrawlTime": CRAWL_START_DATETIME,
-                        },
-                        conn=conn
-                    )
+                err_check = insert_select_id(
+                    table="tblAvailabilityInfo",
+                    key_value=room_avl_info,
+                    identifier_condition={
+                        "avl_romID": roomID_and_UUID['romID'],
+                        "avlDate": day['date'],
+                        "avlCrawlTime": CRAWL_START_DATETIME,
+                    },
+                    conn=conn
+                )
 
-                    if not err_check == -1:
-                        break
-
+                if err_check == -1:
                     logger.error("adding availability info failed.")
 
-            room_day_data.update(room_avl_info)
-            res_rooms.append(room_day_data)
+                room_day_data.update(room_avl_info)
+                res_rooms.append(room_day_data)
 
     rooms_name_id[room_name] = roomID_and_UUID['romID']
 

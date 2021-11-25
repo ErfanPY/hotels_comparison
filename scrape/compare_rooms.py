@@ -3,6 +3,7 @@ import logging
 import time
 from scrape.db_util import custom, get_db_connection, insert_select_id
 from scrape.common_utils import mgroupby
+from datetime import datetime, timedelta
 
 logger = logging.getLogger("main_logger")
 
@@ -244,8 +245,11 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
         insertion_datetime = room['avlInsertionDate']
         
         if crawsl_start_time is None:
-            crawsl_start_time = insertion_datetime.strftime("%Y-%m-%d %H:00:00")
-        
+            insertion_datetime_temp = insertion_datetime
+            if type(insertion_datetime) == str:
+                insertion_datetime_temp = datetime.strptime(insertion_datetime, "%Y-%m-%d %H:%M:%S")
+            crawsl_start_time = insertion_datetime_temp.strftime("%Y-%m-%d %H:00:00")
+            
         romUUID = room['romUUID']
 
         alrInfo = {
@@ -292,4 +296,21 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
             print("duplication, ", ", ".join([f"{k}: {v}" for k, v in identier_dict.items()]))
 
 if __name__ == "__main__":
-    main(crawl_date_start="2021-11-10 00:00:00")
+
+    with open("compare_checkeds.tmp", "a+") as f:
+        f.seek(0)
+        checkeds = [i.strip() for i in f.readlines()]
+
+    for day_offset in range(2):
+        day_date = (datetime.now()+timedelta(days=day_offset-1)).strftime("%Y-%m-%d")
+        
+        for stime, etime in [('00', '12'),('12', '24')]:
+            st, en = f"{day_date} {stime}:00:00", f"{day_date} {etime}:00:00"
+            if st+en in checkeds:
+                continue
+            print(f"{st} // {en}")
+            main(crawl_date_start=st, crawl_date_end=en)
+            
+            with open("compare_checkeds.tmp", "a") as f:
+                f.write(st+en+"\n")
+                checkeds.append(st+en)
