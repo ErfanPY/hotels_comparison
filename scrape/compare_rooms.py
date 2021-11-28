@@ -296,21 +296,10 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawsl_start_time=No
             print("duplication, ", ", ".join([f"{k}: {v}" for k, v in identier_dict.items()]))
 
 if __name__ == "__main__":
-
-    with open("compare_checkeds.tmp", "a+") as f:
-        f.seek(0)
-        checkeds = [i.strip() for i in f.readlines()]
-
-    for day_offset in range(2):
-        day_date = (datetime.now()+timedelta(days=day_offset-1)).strftime("%Y-%m-%d")
-        
-        for stime, etime in [('00', '12'),('12', '24')]:
-            st, en = f"{day_date} {stime}:00:00", f"{day_date} {etime}:00:00"
-            if st+en in checkeds:
-                continue
-            print(f"{st} // {en}")
-            main(crawl_date_start=st, crawl_date_end=en)
-            
-            with open("compare_checkeds.tmp", "a") as f:
-                f.write(st+en+"\n")
-                checkeds.append(st+en)
+    date = datetime.today().strftime("%Y-%m-%d")
+    for st, en in [
+        (f'{date} 00:00:00', f'{date} 12:00:00'),
+        (f'{date} 12:00:00', f'{date} 24:00:00')
+    ]:
+        print(f"{st} // {en}")
+        main(crawl_date_start=st, crawl_date_end=en)
