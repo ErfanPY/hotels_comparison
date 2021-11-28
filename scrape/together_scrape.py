@@ -165,6 +165,7 @@ def get_snapptrip_hotels_rooms(city_name, htlFaName_htlUUID):
         return -1, -1
     
     for counter, hotel in enumerate(snapptrip_hotels):
+        logger.debug(f"Snapptrip, hotel: {counter}/{len(snapptrip_hotels)}, {hotel['faName']}")
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
         
         hotel['rooms'] = scrape_hotel(hotel)
@@ -173,8 +174,6 @@ def get_snapptrip_hotels_rooms(city_name, htlFaName_htlUUID):
             no_uuid_hotels.append(hotel)
         else:
             uuid_hotel[hotel_uuid] = hotel
-        
-        logger.debug(f"Snapptrip, hotel: {counter}, {hotel['faName']}")
     
     logger.info(f"Snapptrip: {counter}")
 
@@ -194,7 +193,11 @@ def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels, day_offset):
         if rooms == -1:
             continue
         
-        filtered_rooms = [room for room in rooms if room['avlDate'] == offset_date]
+        filtered_rooms = list(filter(
+            lambda room: room['avlDate'] == offset_date and not room['romUUID'] is None,
+            rooms
+        ))
+
         site_rooms[hotel['hotel_from']] = filtered_rooms
 
         logger.debug(f" UUID - {j+1}/{len_hotels}")
