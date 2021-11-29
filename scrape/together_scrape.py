@@ -200,7 +200,7 @@ def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels, day_offset):
 
         site_rooms[hotel['hotel_from']] = filtered_rooms
 
-        logger.debug(f" UUID - {j+1}/{len_hotels}")
+        logger.info(f" UUID - {j+1}/{len_hotels}")
 
     try:
         if len(site_rooms.keys()) == 2:
