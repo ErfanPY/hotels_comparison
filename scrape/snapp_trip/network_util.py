@@ -10,14 +10,13 @@ logger = logging.getLogger("main_logger")
 
 
 def get_content_make_soup(url:str, headers:dict={}, **kwargs) -> BeautifulSoup:
-        
-        page_content = get_content(url=url, headers=headers, **kwargs)
-        
-        if page_content == -1:
-            return -1
-        soup = BeautifulSoup(page_content, features="html.parser")
-        
-        return soup
+    page_content = get_content(url=url, headers=headers, **kwargs)
+    
+    if page_content == -1:
+        return -1
+    soup = BeautifulSoup(page_content, features="html.parser")
+    
+    return soup
 
 
 def get_content(url:str, headers:dict={}) -> bytes:

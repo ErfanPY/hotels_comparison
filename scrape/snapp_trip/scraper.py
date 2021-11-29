@@ -266,7 +266,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
         res_rooms.extend(res_room)
         rooms_name_id.update(room_name_id)
 
-        logger.debug(f"Snapptrip, hotel: {hotel_id}, room: {i}/{len(rooms)}")
+        # logger.debug(f"Snapptrip, hotel: {hotel_id}, room: {i}/{len(rooms)}")
     
     return res_rooms, rooms_name_id
 

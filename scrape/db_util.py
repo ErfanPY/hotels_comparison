@@ -27,6 +27,8 @@ def get_db_connection(host=None, user=None, password=None, port=None, database=N
 
 
 def insert_select_id(table:str, key_value:dict, conn, id_field:str=None, identifier_condition:dict=None):
+    if table == "tblAlert":
+        logger.debug("\n".join([f"{k}: {v}" for k, v in key_value.itmes()]))
     curs = conn.cursor(buffered=True, dictionary=True)
 
     keys_string = ', '.join(key for key in key_value.keys())
