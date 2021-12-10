@@ -1,7 +1,8 @@
 from logging.config import dictConfig
 import os
 
-main_logger_level = 'DEBUG' if os.environ.get("SCRAPPER_DEBUG") == "1" else 'INFO'
+main_logger_level = 'DEBUG' if os.environ.get(
+    "SCRAPPER_DEBUG") == "1" else 'INFO'
 
 LOGGING_CONFIG = {
     'version': 1,
@@ -16,7 +17,7 @@ LOGGING_CONFIG = {
             'level': 'DEBUG',
             'formatter': 'default_fromatter',
             'class': 'logging.StreamHandler',
-            'stream': 'ext://sys.stdout',  
+            'stream': 'ext://sys.stdout',
         },
         'email': {
             'level': 'CRITICAL',

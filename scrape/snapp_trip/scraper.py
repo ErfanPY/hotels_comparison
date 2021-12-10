@@ -38,7 +38,7 @@ fa_en_cities = {
     'ارومیه': 'urmia',
 }
 
-en_fa_cities = {v:k for k, v in fa_en_cities.items()}
+en_fa_cities = {v: k for k, v in fa_en_cities.items()}
 
 to_scrape_cities_inp = os.environ.get("SNAPPTRIP_TO_SCRAPE_CITIES", "")
 
@@ -54,12 +54,11 @@ BASE_URL = 'https://www.snapptrip.com/'
 CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
 
-def main(proxy_host:str=None, proxy_port:int=None):
+def main(proxy_host: str = None, proxy_port: int = None):
     # socks.set_default_proxy(proxy_host, proxy_port)
     # if not proxy_host is None:
     #     socket.socket = socks.socksocket
 
-    
     for city_name in to_scrape_cities:
 
         hotels = get_city_hotels(city_name)
@@ -73,24 +72,26 @@ def get_city_hotels(city_name, day_offset=0):
 
     city_url = make_city_url(city_name.strip())
     to_scrape_url = get_city_dated_url(city_url, day_offset)
-        
+
     total_hotels_counter = 0
     page_no = 1
 
     while True:
-        
+
         search_page_soup = get_content_make_soup(to_scrape_url)
         if search_page_soup == -1:
-            logger.error("Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
+            logger.error(
+                "Snapptrip - Getting search page failed: url: {}".format(to_scrape_url))
             return -1
 
-        hotels = search_page_soup.select_one(".hotels-data").findAll("li", {'data-hotel-id': True})
-        
+        hotels = search_page_soup.select_one(
+            ".hotels-data").findAll("li", {'data-hotel-id': True})
+
         for hotel in hotels:
-            
+
             parsed_hotel = parse_hotel(hotel, city_name)
             all_hotels.append(parsed_hotel)
-        
+
             total_hotels_counter += 1
 
         next_page_div = search_page_soup.select_one('.pagination-next')
@@ -103,8 +104,7 @@ def get_city_hotels(city_name, day_offset=0):
                 break
         else:
             break
-        
-        
+
     return all_hotels
 
 
@@ -113,33 +113,33 @@ def scrape_hotels(city_name, hotels):
     hotels_count = len(hotels)
 
     for hotel in hotels:
- 
+
         try:
             scrape_hotel(hotel['url'], hotel['faName'], hotel['id'], city_name)
-                    
+
             time.sleep(SLEEP_TIME)
-                
+
             available_hotels_counter += 1
 
         except Exception as e:
             logger.error("Snapptrip - FAILED on City: {} hotel: {}, error: {}".format(
-                        city_name,
-                        hotel['url'],
-                        e
-                    ))
+                city_name,
+                hotel['url'],
+                e
+            ))
 
     logger.info("Snapptrip - City: {} has total {} and {} available hotels.".format(
                 city_name,
                 hotels_count,
                 available_hotels_counter,
-            ))
+                ))
 
 
 def parse_hotel(hotel, city_name):
     hotel_site_id = hotel.contents[3].attrs['data-id']
 
     hotel_url = hotel.select_one(
-                    '#resultpage-hotelcard-cta').get('href')
+        '#resultpage-hotelcard-cta').get('href')
     hotel_url = urljoin(BASE_URL, hotel_url)
     hotel_name = hotel_url.split("/")[5].split("?")[0]
 
@@ -160,7 +160,7 @@ def make_city_url(city_name):
 
 
 def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name: str) -> None:
-    """Gets and saves hotel then cals scrape_hotel_rooms
+    """Gets and saves hotel then calls scrape_hotel_rooms
 
     Args:
         hotel_url (str): A url points to the hotel page.
@@ -202,13 +202,15 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
     hotel_soup = get_content_make_soup(hotel_url)
 
     if hotel_soup == -1:
-        logger.error("Snapptrip - Getting hotel content failed: url: {}".format(hotel_url))
+        logger.error(
+            "Snapptrip - Getting hotel content failed: url: {}".format(hotel_url))
         return -1
 
     comments_soup = hotel_soup.select('#rating-hotel')[0]
 
-    rooms, rooms_name_id = scrape_hotel_rooms(hotel_soup, hotel_id, hotel_site_id)
-    
+    rooms, rooms_name_id = scrape_hotel_rooms(
+        hotel_soup, hotel_id, hotel_site_id)
+
     add_rooms_comment(comments_soup=comments_soup, rooms_name_id=rooms_name_id)
 
     return rooms
@@ -243,19 +245,19 @@ def get_city_dated_url(city_url: str, day_offset: int = 0) -> str:
 
 
 def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: str) -> dict:
-    """Iterats on hotel room and save room and date to database.
+    """Iterates on hotel room and save room and date to database.
 
     Args:
         hotel_soup (BeautifulSoup): A BeautifulSoup contains hotel webpage.
-        hotel_id (int): Hotel ID on our databse.
-        hotel_site_id (str): hote ID on snapptrip site.
+        hotel_id (int): Hotel ID on our database.
+        hotel_site_id (str): hotel ID on snapptrip site.
     """
     rooms_div = hotel_soup.select_one("div.position-relative")
     rooms = rooms_div.select(".room-item")
 
     res_rooms = []
     rooms_name_id = {}
-    
+
     for i, room in enumerate(rooms):
         res_room, room_name_id = get_parse_room(
             hotel_id,
@@ -267,9 +269,8 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
         rooms_name_id.update(room_name_id)
 
         # logger.debug(f"Snapptrip, hotel: {hotel_id}, room: {i}/{len(rooms)}")
-    
-    return res_rooms, rooms_name_id
 
+    return res_rooms, rooms_name_id
 
 
 def get_parse_room(hotel_id, hotel_site_id, room):
@@ -292,22 +293,22 @@ def get_parse_room(hotel_id, hotel_site_id, room):
         additives.append("breakfast")
 
     room_data = {
-            "romAdditives": json.dumps(additives),
-            "rom_htlID": hotel_id,
-            "romName": room_name,
-            "romType": get_room_types(room_name),
-            'romMealPlan': meal_plan
-        }
+        "romAdditives": json.dumps(additives),
+        "rom_htlID": hotel_id,
+        "romName": room_name,
+        "romType": get_room_types(room_name),
+        'romMealPlan': meal_plan
+    }
 
     while True:
         with get_db_connection() as conn:
             roomID_and_UUID = insert_select_id(
-                    table='tblRooms',
-                    key_value=room_data,
-                    id_field=['romID', 'romUUID'],
-                    identifier_condition=room_data,
-                    conn=conn
-                )
+                table='tblRooms',
+                key_value=room_data,
+                id_field=['romID', 'romUUID'],
+                identifier_condition=room_data,
+                conn=conn
+            )
 
         if not roomID_and_UUID == -1:
             break
@@ -317,7 +318,7 @@ def get_parse_room(hotel_id, hotel_site_id, room):
     room_data['romUUID'] = roomID_and_UUID['romUUID']
     room_data['romID'] = roomID_and_UUID['romID']
     room_data['htlFrom'] = "S"
-    
+
     while True:
         room_calender_content = get_content(
             "https://www.snapptrip.com/shopping/{}/calendar/{}?limit=36".format(hotel_site_id, room_site_id))
@@ -325,9 +326,10 @@ def get_parse_room(hotel_id, hotel_site_id, room):
         if not room_calender_content == -1:
             break
 
-        logger.error("Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
+        logger.error(
+            "Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
         time.sleep(SLEEP_TIME)
-    
+
     room_calender = json.loads(room_calender_content)
     with get_db_connection() as conn:
         for data in room_calender['data']:
@@ -341,10 +343,10 @@ def get_parse_room(hotel_id, hotel_site_id, room):
                 unique_romID_crawl_insertion.add(unique_check)
 
                 base_price = day['prices']['local_price']*10
-                dsicount_price = day['prices']['local_price_off']*10
+                discount_price = day['prices']['local_price_off']*10
 
-                if dsicount_price > base_price:
-                    base_price, dsicount_price = dsicount_price, base_price
+                if discount_price > base_price:
+                    base_price, discount_price = discount_price, base_price
 
                 room_avl_info = {
                     "avl_romID": roomID_and_UUID['romID'],
@@ -377,7 +379,7 @@ def get_parse_room(hotel_id, hotel_site_id, room):
     return res_rooms, rooms_name_id
 
 
-def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:dict) -> None:
+def add_rooms_comment(comments_soup: BeautifulSoup, rooms_name_id: dict) -> None:
     """Extract comments from html and connect comment with specified room.
 
     Args:
@@ -388,12 +390,13 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:dict) -> None:
     """
 
     with get_db_connection() as conn:
-    
+
         for comment in comments_soup.select('li'):
             user_name = comment.select_one('.user-name')
             user_name = user_name.text.strip() if user_name else "مهمان"
 
-            comment_date = comment.select_one('.date-modify > span').attrs['data-registerdate'] # attr date
+            comment_date = comment.select_one(
+                '.date-modify > span').attrs['data-registerdate']  # attr date
             room_name = comment.select_one('.reserve-info__room > span')
             room_name = room_name.text.strip() if room_name else ""
 
@@ -402,15 +405,15 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:dict) -> None:
 
             stren_point = comment.select_one('.strengths-point-text > p')
             weak_point = comment.select_one('.weakness-point-text > p')
-            
+
             stren_point = stren_point.text.strip() if stren_point else ""
             weak_point = weak_point.text.strip() if weak_point else ""
-            
-            # single qoute esacpe
+
+            # single quote escape
             stren_point = re.sub("'", "''", stren_point)
             weak_point = re.sub("'", "''", weak_point)
             comment_text = re.sub("'", "''", comment_text)
-            
+
             room_id = rooms_name_id.get(room_name)
             if not room_id:
                 continue
@@ -430,6 +433,7 @@ def add_rooms_comment(comments_soup:BeautifulSoup, rooms_name_id:dict) -> None:
             except Exception as e:
                 logger.error("adding comment failed.")
                 return
+
 
 if __name__ == "__main__":
     main()

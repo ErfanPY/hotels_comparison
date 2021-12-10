@@ -42,7 +42,8 @@ TO_SCRAPE_CITIES = os.environ.get("ALIBABA_TO_SCRAPE_CITIES", "")
 if not TO_SCRAPE_CITIES:
     TO_SCRAPE_CITIES = list(city_ids.keys())
 else:
-    TO_SCRAPE_CITIES = [city.strip() for city in TO_SCRAPE_CITIES.split(',') if city.strip()]
+    TO_SCRAPE_CITIES = [city.strip()
+                        for city in TO_SCRAPE_CITIES.split(',') if city.strip()]
 
 START_DAY_OFFSET = os.environ.get("ALIBABA_START_DAY", 0)
 scrape_stat_path = "scrape_stat/"+'-'.join(TO_SCRAPE_CITIES)
@@ -58,22 +59,24 @@ SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME", "0"))
 CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
 
-def main(proxy_host:str=None, proxy_port:int=None):
+def main(proxy_host: str = None, proxy_port: int = None):
 
     for day_offset in range(START_DAY_OFFSET, 30):
         for city_name in TO_SCRAPE_CITIES:
             hotels_counter = 0
             city_id = city_ids[city_name]
             session_id, date_from = get_search_session_id(city_id, day_offset)
-            
+
             if session_id == -1:
-                logger.error("Alibaba - Getting city search failed: city_name:{}, day_offset:{}".format(city_name, day_offset))
+                logger.error(
+                    "Alibaba - Getting city search failed: city_name:{}, day_offset:{}".format(city_name, day_offset))
                 continue
-            
-            logger.info('Alibab - scraping city: {} on day: {}'.format(city_name, day_offset))
+
+            logger.info(
+                'Alibaba - scraping city: {} on day: {}'.format(city_name, day_offset))
 
             hotels_data = get_city_hotels(session_id, city_name)
-            
+
             if hotels_data == -1:
                 continue
 
@@ -85,14 +88,17 @@ def main(proxy_host:str=None, proxy_port:int=None):
                         date_from=date_from, day_offset=day_offset
                     )
                     if session_id == -1:
-                        logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(city_name, hotel['name'].get('fa'), e))
+                        logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(
+                            city_name, hotel['name'].get('fa'), e))
 
                 except Exception as e:
-                    logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(city_name, hotel['name'].get('fa'), e))
+                    logger.error("Alibaba - FAILED on City: {}, hotel {}, with error: {}".format(
+                        city_name, hotel['name'].get('fa'), e))
 
                 hotels_counter += 1
-            
-            logger.info("Alibaba - City: {} has {} hotels.".format(city_name, hotels_counter))
+
+            logger.info(
+                "Alibaba - City: {} has {} hotels.".format(city_name, hotels_counter))
 
         with open(scrape_stat_path, 'w') as f:
             f.write(str(day_offset+1))
@@ -107,26 +113,28 @@ def get_city_hotels(session_id, city_name, date_from=None, day_offset=None):
 
     while not completed:
         hotels_data = get_search_data(session_id)
-        
+
         if hotels_data == -1 or hotels_data['error']:
-            logger.error("Alibaba - Getting city hotels failed: city_name:{}".format(city_name))
+            logger.error(
+                "Alibaba - Getting city hotels failed: city_name:{}".format(city_name))
             return -1
-        
+
         for hotel in hotels_data['result']['result']:
             parsed_hotel = parse_hotel(hotel)
-            
+
             parsed_hotel['session_id'] = session_id
             parsed_hotel['city'] = city_name
             parsed_hotel['date_from'] = date_from
             parsed_hotel['day_offset'] = day_offset
 
             hotels_data_results.append(parsed_hotel)
-        
+
         completed = hotels_data['result']['lastChunk']
         time.sleep(SLEEP_TIME)
 
     # Make hotels_data unique
-    hotels_data_results = list({v['id']:v for v in hotels_data_results}.values()) 
+    hotels_data_results = list(
+        {v['id']: v for v in hotels_data_results}.values())
     return hotels_data_results
 
 
@@ -145,7 +153,7 @@ def parse_hotel(hotel):
     }
 
 
-def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_offset):
+def scrape_hotel(city_name: str, hotel: dict, session_id: str, date_from: str, day_offset):
     """Scrape and save hotel then calls rooms scraper.
 
     Args:
@@ -186,18 +194,21 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
     while not final_result:
         hotel_rooms_data = get_hotel_rooms_data(session_id, hotel['id'])
         if hotel_rooms_data == -1:
-            logger.error("Alibaba - Getting city search failed - max sleep : city_name:{}".format(city_name))
+            logger.error(
+                "Alibaba - Getting city search failed - max sleep : city_name:{}".format(city_name))
             return -1, -1
-      
+
         if hotel_rooms_data.get('statusCode') == 408:
             city_id = city_ids[city_name]
             session_id, date_from = get_search_session_id(city_id, day_offset)
 
             if session_id == -1:
-                logger.error("Alibaba - Getting city search failed: city_name:{}".format(city_name))
+                logger.error(
+                    "Alibaba - Getting city search failed: city_name:{}".format(city_name))
                 return -1, -1
 
-            logger.error(f"Session Expired - city-id: {city_id}, day: {day_offset}, session: {session_id[:10]}...{session_id[-10:]}")
+            logger.error(
+                f"Session Expired - city-id: {city_id}, day: {day_offset}, session: {session_id[:10]}...{session_id[-10:]}")
         else:
             rooms.extend(hotel_rooms_data['result']["rooms"])
             final_result = hotel_rooms_data['result']['finalResult']
@@ -210,12 +221,11 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
         room_type_id = room_type["id"]
         meal_plan = room_type['mealPlan']
         for room in room_type["rooms"]:
-            
 
             romID, room_UUID, room_data = save_room(room=room, hotel_id=hotel_id, date_from=date_from,
-                meal_plan=meal_plan)
+                                                    meal_plan=meal_plan)
             rooms_counter += 1
-            
+
             room_data.update({
                 "romID": romID,
                 "romUUID": room_UUID,
@@ -228,11 +238,11 @@ def scrape_hotel(city_name:str, hotel:dict, session_id:str, date_from:str, day_o
     return session_id, res_rooms
 
 
-def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
+def save_room(room: dict, hotel_id: int, date_from: str, meal_plan: str) -> None:
     """Save room data to database
 
     Args:
-        room (dict): A dictionry of room data (contains name, name_en, price, boardPrice).
+        room (dict): A dictionary of room data (contains name, name_en, price, boardPrice).
         hotel_id (int): ID of hotel in out database.
         date_from (str): Formated date of search date range start.
         meal_plan (str): One of these (BB/RO)
@@ -269,7 +279,7 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
 
             if room['price'] > room['boardPrice']:
                 room['price'], room['boardPrice'] = room['boardPrice'], room['price']
-            
+
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             room_avl_info = {
                 "avl_romID": room_id_and_uuid['romID'],
@@ -293,7 +303,6 @@ def save_room(room:dict, hotel_id:int, date_from:str, meal_plan:str) -> None:
             if not err_check == -1:
                 room_data.update(room_avl_info)
                 break
-        
 
     return room_id_and_uuid['romID'], room_id_and_uuid['romUUID'], room_data
 
