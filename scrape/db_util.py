@@ -1,5 +1,6 @@
 import os
 import time
+import sys
 
 import mysql.connector
 import logging
@@ -27,8 +28,6 @@ def get_db_connection(host=None, user=None, password=None, port=None, database=N
 
 
 def insert_select_id(table: str, key_value: dict, conn, id_field: str = None, identifier_condition: dict = None):
-    if table == "tblAlert":
-        logger.debug("\n".join([f"{k}: {v}" for k, v in key_value.items()]))
     curs = conn.cursor(buffered=True, dictionary=True)
 
     keys_string = ', '.join(key for key in key_value.keys())
@@ -52,26 +51,13 @@ def insert_select_id(table: str, key_value: dict, conn, id_field: str = None, id
         WHERE B.Dup IS NULL
         LIMIT 1
     """
-    try:
-        start_time = time.time()
-        curs.execute(insert_query, list(key_value.values()))
-        conn.commit()
-    except Exception as e:
-        end_time = time.time() - start_time
 
-        key_values_text = ",".join(f"{k}: {v}" for k, v in key_value.items())
+    values = list(key_value.values())
+    err_check = try_execute_function(execute_commit, curs=curs, conn=conn,
+                                     insert_query=insert_query, values=values)
 
-        if "WSREP" in str(e):
-            logger.error("WSREP deadlock/conflict. Retring")
-            return -1
-        elif e.errno == 2013:
-            logger.error("Lost connection to MySQL server during query.")
-            return -1
-        else:
-            logger.error(
-                f"Insertion failed, time: {end_time:.2f}s, query: {insert_query}, [{key_values_text}]")
-            logger.exception(e)
-            raise e
+    if not err_check is None:
+        return err_check
 
     if not id_field is None:
 
@@ -94,7 +80,77 @@ def insert_select_id(table: str, key_value: dict, conn, id_field: str = None, id
             return str(row_id[id_field])
 
 
+def try_execute_function(func, *args, **kwargs):
+    try:
+        func(*args, **kwargs)
+    except Exception as e:
+
+        if "WSREP" in str(e):
+            logger.error("WSREP deadlock/conflict. Retring")
+            return -1
+        elif e.errno == 2013:
+            logger.error("Lost connection to MySQL server during query.")
+            return -1
+        else:
+            args_text = ', '.join(args)
+            kwargs_text = ', '.join(f"{k}:{v}" for k, v in kwargs.items())
+
+            logger.error(
+                f"Database function failed, args: {args_text} - kwargs: {kwargs_text}")
+            logger.exception(e)
+            raise e
+
+
+def execute_commit(curs, conn, insert_query, values):
+    curs.execute(insert_query, values)
+    conn.commit()
+
+
+def insert_multiple_room_info(conn, rooms_info_list):
+    logger.error("'{}' called 'insert_multiple_room_info'".format(
+        sys._getframe().f_back.f_code.co_name))
+    curs = conn.cursor()
+
+    insert_query = """
+        INSERT INTO tblAvailabilityInfo (avl_romID, avlDate, avlCrawlTime, avlInsertionDate, avlBasePrice, avlDiscountPrice)
+        SELECT  
+        %s, %s, %s, %s, %s, %s
+        FROM (SELECT 1) A
+        LEFT JOIN(
+            SELECT 1 AS Dup
+            FROM tblAvailabilityInfo
+            WHERE avl_romID = %s AND avlDate = %s AND avlCrawlTime = %s
+        ) B
+        ON TRUE
+        WHERE B.Dup IS NULL
+        LIMIT 1
+    """
+    list_of_values = []
+    for info in rooms_info_list:
+        list_of_values.append(tuple(info.values())+(info['avl_romID'],
+                                                    info['avlDate'], info['avlCrawlTime']))
+
+    err_check = try_execute_function(
+        execute_many_commit,
+        curs=curs,
+        conn=conn,
+        insert_query=insert_query,
+        list_of_values=list_of_values
+    )
+
+    if not err_check is None:
+        return None
+
+
+def execute_many_commit(curs, conn, insert_query, list_of_values):
+    curs.executemany(insert_query, list_of_values)
+    conn.commit()
+
+
 def custom(query_string: str, data: list = [], conn=None):
+    logger.error("'{}' called 'custom' on '{}'".format(
+        sys._getframe().f_back.f_code.co_name, query_string.split("\n")[0]))
+
     curs = conn.cursor(buffered=True, dictionary=True)
 
     curs.execute(query_string, data)

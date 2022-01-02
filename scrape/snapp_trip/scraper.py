@@ -10,7 +10,7 @@ from urllib.parse import urljoin, urlparse
 
 import socks
 from bs4 import BeautifulSoup
-from scrape.db_util import get_db_connection, insert_select_id
+from scrape.db_util import get_db_connection, insert_multiple_room_info, insert_select_id
 from scrape.common_utils import get_room_types
 
 from .network_util import get_content, get_content_make_soup, urlparse
@@ -259,7 +259,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
     rooms_name_id = {}
 
     for i, room in enumerate(rooms):
-        res_room, room_name_id = get_parse_room(
+        res_room, room_name_id, rooms_info_buff = get_parse_room(
             hotel_id,
             hotel_site_id,
             room
@@ -268,8 +268,11 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
         res_rooms.extend(res_room)
         rooms_name_id.update(room_name_id)
 
-        # logger.debug(f"Snapptrip, hotel: {hotel_id}, room: {i}/{len(rooms)}")
-
+    with get_db_connection() as conn:
+        err_check = insert_multiple_room_info(conn, rooms_info_buff)
+        if err_check == -1:
+            logger.error("adding availability info failed.")
+        
     return res_rooms, rooms_name_id
 
 
@@ -330,9 +333,11 @@ def get_parse_room(hotel_id, hotel_site_id, room):
             "Snapptrip - getting hotel room failed, hotel_id: {}".format(hotel_id))
         time.sleep(SLEEP_TIME)
 
+    rooms_info_buff = []
     room_calender = json.loads(room_calender_content)
     with get_db_connection() as conn:
         for data in room_calender['data']:
+            # rooms_info_buff = []
             for day in data['calendar']:
                 room_day_data = room_data.copy()
                 unique_check = f"{roomID_and_UUID['romID']}{day['date']}"
@@ -357,26 +362,31 @@ def get_parse_room(hotel_id, hotel_site_id, room):
                     "avlDiscountPrice": day['prices']['local_price_off']*10
                 }
 
-                err_check = insert_select_id(
-                    table="tblAvailabilityInfo",
-                    key_value=room_avl_info,
-                    identifier_condition={
-                        "avl_romID": roomID_and_UUID['romID'],
-                        "avlDate": day['date'],
-                        "avlCrawlTime": CRAWL_START_DATETIME,
-                    },
-                    conn=conn
-                )
+                rooms_info_buff.append(room_avl_info)
+                # err_check = insert_select_id(
+                #     table="tblAvailabilityInfo",
+                #     key_value=room_avl_info,
+                #     identifier_condition={
+                #         "avl_romID": roomID_and_UUID['romID'],
+                #         "avlDate": day['date'],
+                #         "avlCrawlTime": CRAWL_START_DATETIME,
+                #     },
+                #     conn=conn
+                # )
 
-                if err_check == -1:
-                    logger.error("adding availability info failed.")
+                # if err_check == -1:
+                #     logger.error("adding availability info failed.")
 
                 room_day_data.update(room_avl_info)
                 res_rooms.append(room_day_data)
 
+            # err_check = insert_multiple_room_info(conn, rooms_info_buff)
+            # if err_check == -1:
+            #     logger.error("adding availability info failed.")
+
     rooms_name_id[room_name] = roomID_and_UUID['romID']
 
-    return res_rooms, rooms_name_id
+    return res_rooms, rooms_name_id, rooms_info_buff
 
 
 def add_rooms_comment(comments_soup: BeautifulSoup, rooms_name_id: dict) -> None:

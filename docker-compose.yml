@@ -17,3 +17,10 @@ services:
       - SCRAPE_TOGETHER=1
       - ALIBABA_SCRAPPER_SLEEP_TIME=0
       - ALIBABA_TO_SCRAPE_CITIES=tehran,bandarAbbas
+
+  together-n2:
+    <<: *scrapper
+    environment:
+      - SCRAPE_TOGETHER=1
+      - ALIBABA_SCRAPPER_SLEEP_TIME=0
+      - ALIBABA_TO_SCRAPE_CITIES=birjand,mashhad
