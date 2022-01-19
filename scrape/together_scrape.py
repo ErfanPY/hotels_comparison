@@ -24,7 +24,12 @@ from scrape.snapp_trip.scraper import (
     en_fa_cities
 )
 
-from scrape.compare_rooms import compare_rooms, add_single_available_rooms, make_romUUID_romIDs
+from scrape.compare_rooms import (
+    compare_rooms,
+    add_single_available_rooms,
+    make_romUUID_romIDs,
+    main as compare_main
+)
 
 
 logger = logging.getLogger("main_logger")
@@ -44,6 +49,8 @@ SCRAPE_END_DAY = int(SCRAPE_END_DAY) + 1
 SCRAPE_END_DAY = min(SCRAPE_END_DAY, 31)
 
 crawl_start_datetime = datetime.now().strftime("%Y-%m-%d %H:00:00")
+
+# DEBUG_HOTEL_EN_NAME = "amatis"
 
 
 def main():
@@ -135,6 +142,10 @@ def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
         return -1
 
     for hotel in alibaba_hotels:
+        # # TODO remove
+        # if DEBUG_HOTEL_EN_NAME and not DEBUG_HOTEL_EN_NAME in hotel['enName']:
+        #     continue
+
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
         if hotel_uuid is None:
             no_uuid_hotels.append(hotel)
@@ -327,20 +338,23 @@ def compare_hotel_rooms(alibaba, snapptrip, crawl_start_datetime):
 
     for uuid, rooms in uuid_room.items():
         if not uuid is None:
-            while True:
-                with get_db_connection() as conn:
+            if len(rooms) == 1:
+                add_reserved_hotel(rooms)
+            else:
+                while True:
+                    with get_db_connection() as conn:
 
-                    err_check = compare_rooms(
-                        alibaba_room=rooms[0],
-                        snapptrip_room=rooms[-1],
-                        conn=conn,
-                        crawl_start_time=crawl_start_datetime
-                    )
+                        err_check = compare_rooms(
+                            alibaba_room=rooms[0],
+                            snapptrip_room=rooms[1],
+                            conn=conn,
+                            crawl_start_time=crawl_start_datetime
+                        )
 
-                    if not err_check == -1:
-                        break
+                        if not err_check == -1:
+                            break
 
-                time.sleep(2)
+                    time.sleep(2)
 
 
 def add_reserved_hotel(rooms):
@@ -353,3 +367,11 @@ def add_reserved_hotel(rooms):
 
 if __name__ == "__main__":
     main()
+
+    # date = datetime.today().strftime("%Y-%m-%d")
+    # for st, en in [
+    #     (f'{date} 00:00:00', f'{date} 12:00:00'),
+    #     (f'{date} 12:00:00', f'{date} 24:00:00')
+    # ]:
+    #     print(f"{st} // {en}")
+    #     compare_main(crawl_date_start=st, crawl_date_end=en)

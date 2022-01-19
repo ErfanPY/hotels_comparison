@@ -53,6 +53,7 @@ SLEEP_TIME = int(os.environ.get("SNAPPTRIP_SCRAPPER_SLEEP_TIME", "4"))
 BASE_URL = 'https://www.snapptrip.com/'
 CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
+# DEBUG_HOTEL_FA_NAME = "آماتیس"
 
 def main(proxy_host: str = None, proxy_port: int = None):
     # socks.set_default_proxy(proxy_host, proxy_port)
@@ -75,6 +76,7 @@ def get_city_hotels(city_name, day_offset=0):
 
     total_hotels_counter = 0
     page_no = 1
+    # do_break = False
 
     while True:
 
@@ -90,9 +92,20 @@ def get_city_hotels(city_name, day_offset=0):
         for hotel in hotels:
 
             parsed_hotel = parse_hotel(hotel, city_name)
+
+            # if DEBUG_HOTEL_FA_NAME and not DEBUG_HOTEL_FA_NAME in parsed_hotel['faName']:
+            #     continue
+
             all_hotels.append(parsed_hotel)
 
             total_hotels_counter += 1
+
+            # if DEBUG_HOTEL_FA_NAME and DEBUG_HOTEL_FA_NAME in parsed_hotel["faName"]:
+            #     do_break = True
+            #     break
+
+        # if do_break:
+        #     break
 
         next_page_div = search_page_soup.select_one('.pagination-next')
         if not next_page_div is None:
@@ -272,7 +285,7 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
         err_check = insert_multiple_room_info(conn, rooms_info_buff)
         if err_check == -1:
             logger.error("adding availability info failed.")
-        
+
     return res_rooms, rooms_name_id
 
 

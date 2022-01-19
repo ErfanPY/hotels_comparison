@@ -279,9 +279,25 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawl_start_time=Non
         alrA_romID = roomIDs.get('A')
         alrS_romID = roomIDs.get('S')
         if alrA_romID is None or alrS_romID is None:
-            logger.critical(
-                f"Room doesn't exist in other site. romUUID: {romUUID}")
-            continue
+            romIDs = custom(
+                query_string="""
+                    SELECT romID, htlFrom FROM tblRooms
+                    INNER JOIN tblHotels ON rom_htlID = htlID
+                    WHERE romUUID = %s""",
+                data=[romUUID],
+                conn=conn
+            )
+            if len(romIDs) == 2:
+                if romIDs[0]['htlFrom'] == "S":
+                    alrS_romID = romIDs[1]["romID"]
+                    alrA_romID = romIDs[0]["romID"]
+                else:
+                    alrS_romID = romIDs[0]["romID"]
+                    alrA_romID = romIDs[1]["romID"]
+            else:
+                logger.critical(
+                    f"Room doesn't exist in other site. romUUID: {romUUID}")
+                continue
 
         room_alert = {
             "alrRoomUUID": romUUID,
