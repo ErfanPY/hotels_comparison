@@ -1,6 +1,7 @@
-from collections import defaultdict
 import logging
 import os
+import time
+from collections import defaultdict
 from datetime import datetime, timedelta
 import time
 
@@ -28,8 +29,8 @@ from scrape.compare_rooms import (
     compare_rooms,
     add_single_available_rooms,
     make_romUUID_romIDs,
-    main as compare_main
 )
+from scrape.critical_log import log_critical_error
 
 
 logger = logging.getLogger("main_logger")
@@ -228,7 +229,7 @@ def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels, day_offset):
         else:
             logger.error("nonhandleable count of sites.")
     except Exception as e:
-        logger.critical(
+        log_critical_error(
             f"Unhandled error on hotels compare.\n{e}", stack_info=True)
 
     return site_rooms
@@ -248,7 +249,7 @@ def scrape_no_uuid_hotels(none_uuid_hotels):
             if not front_i == end_i:
                 scrape_hotel(none_uuid_hotels[end_i])
         except Exception as e:
-            logger.critical(
+            log_critical_error(
                 f"Unhandled error on no uuid hotel.\n{e}", stack_info=True)
 
         front_i += 1
@@ -367,11 +368,3 @@ def add_reserved_hotel(rooms):
 
 if __name__ == "__main__":
     main()
-
-    # date = datetime.today().strftime("%Y-%m-%d")
-    # for st, en in [
-    #     (f'{date} 00:00:00', f'{date} 12:00:00'),
-    #     (f'{date} 12:00:00', f'{date} 24:00:00')
-    # ]:
-    #     print(f"{st} // {en}")
-    #     compare_main(crawl_date_start=st, crawl_date_end=en)

@@ -1,9 +1,11 @@
+import logging
 import os
-import time
 import sys
+import time
 
 import mysql.connector
-import logging
+
+from scrape.critical_log import log_critical_error
 
 logger = logging.getLogger("main_logger")
 
@@ -56,6 +58,9 @@ def insert_select_id(table: str, key_value: dict, conn, id_field: str = None, id
     err_check = try_execute_function(execute_commit, curs=curs, conn=conn,
                                      insert_query=insert_query, values=values)
 
+    logger.debug("'{}' called 'insert_select_id', table: {}, added {} rows".format(
+        sys._getframe().f_back.f_code.co_name, table, curs.rowcount))
+
     if not err_check is None:
         return err_check
 
@@ -74,7 +79,7 @@ def insert_select_id(table: str, key_value: dict, conn, id_field: str = None, id
             row_id = curs.fetchone()
 
             if not row_id:
-                logger.critical("No row was added to database.")
+                log_critical_error("No row was added to database.")
                 return -1
 
             return str(row_id[id_field])
@@ -96,7 +101,7 @@ def try_execute_function(func, *args, **kwargs):
             kwargs_text = ', '.join(f"{k}:{v}" for k, v in kwargs.items())
 
             logger.error(
-                f"Database function failed, args: {args_text} - kwargs: {kwargs_text}")
+                f"Database function failed, from: {sys._getframe().f_back.f_code.co_name} - args: {args_text} - kwargs: {kwargs_text}")
             logger.exception(e)
             raise e
 
@@ -107,7 +112,7 @@ def execute_commit(curs, conn, insert_query, values):
 
 
 def insert_multiple_room_info(conn, rooms_info_list):
-    logger.error("'{}' called 'insert_multiple_room_info'".format(
+    logger.debug("'{}' called 'insert_multiple_room_info'".format(
         sys._getframe().f_back.f_code.co_name))
     curs = conn.cursor()
 
@@ -148,8 +153,8 @@ def execute_many_commit(curs, conn, insert_query, list_of_values):
 
 
 def custom(query_string: str, data: list = [], conn=None):
-    logger.error("'{}' called 'custom' on '{}'".format(
-        sys._getframe().f_back.f_code.co_name, query_string.split("\n")[0]))
+    logger.debug("'{}' called 'custom' on '{}'".format(
+        sys._getframe().f_back.f_code.co_name, query_string.split("\n")[1].strip()))
 
     curs = conn.cursor(buffered=True, dictionary=True)
 

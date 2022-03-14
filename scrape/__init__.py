@@ -21,20 +21,18 @@ LOGGING_CONFIG = {
         },
         'email': {
             'level': 'CRITICAL',
+            "class": "logging.handlers.SMTPHandler",
             'formatter': 'default_fromatter',
-            'class': 'logging.handlers.SMTPHandler',
-            'mailhost': [
-                os.environ.get("EMAIL_HOST"),
-                int(os.environ.get("EMAIL_PORT", "0"))
-            ],
-            'fromaddr': os.environ.get("EMAIL_USER_ADDR"),
-            'toaddrs': os.environ.get("EMAIL_TO_ADDR", "").split(","),
-            'credentials': [
+            'mailhost': os.environ.get("EMAIL_HOST"),
+            "fromaddr":  os.environ.get("EMAIL_USER_ADDR"),
+            "toaddrs": os.environ.get("EMAIL_TO_ADDR", "").split(","),
+            'subject': 'Alibaba scrapper critical error.',
+            "credentials": [
                 os.environ.get("EMAIL_USER_ADDR"),
                 os.environ.get("EMAIL_PASSWORD")
             ],
-            'subject': 'Alibaba scrapper critical error.',
-            'secure': []
+            "secure": []
+
         },
         'rotatingFile': {
             'class': 'logging.handlers.RotatingFileHandler',

@@ -55,6 +55,7 @@ CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
 # DEBUG_HOTEL_FA_NAME = "آماتیس"
 
+
 def main(proxy_host: str = None, proxy_port: int = None):
     # socks.set_default_proxy(proxy_host, proxy_port)
     # if not proxy_host is None:
@@ -219,12 +220,14 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
             "Snapptrip - Getting hotel content failed: url: {}".format(hotel_url))
         return -1
 
-    comments_soup = hotel_soup.select('#rating-hotel')[0]
+    comments_soup = hotel_soup.select('#rating-hotel')
 
     rooms, rooms_name_id = scrape_hotel_rooms(
         hotel_soup, hotel_id, hotel_site_id)
 
-    add_rooms_comment(comments_soup=comments_soup, rooms_name_id=rooms_name_id)
+    if comments_soup:
+        add_rooms_comment(
+            comments_soup=comments_soup[0], rooms_name_id=rooms_name_id)
 
     return rooms
 

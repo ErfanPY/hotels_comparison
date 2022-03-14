@@ -3,6 +3,7 @@ import logging
 import time
 from scrape.db_util import custom, get_db_connection, insert_select_id
 from scrape.common_utils import mgroupby
+from scrape.critical_log import log_critical_error
 from datetime import datetime, timedelta
 
 logger = logging.getLogger("main_logger")
@@ -96,7 +97,7 @@ def main(crawl_date_start=None, crawl_date_end=None):
             logger.info(f"{i}/{count_roomUUID} - dual")
 
         else:
-            logger.critical(
+            log_critical_error(
                 "Non handled condition, {}".format(str(htlFrom_groups)))
 
     with get_db_connection() as conn:
@@ -272,7 +273,7 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawl_start_time=Non
 
         roomIDs = romUUID_romIDs.get(romUUID)
         if roomIDs is None:
-            logger.critical(
+            log_critical_error(
                 f"Room doesn't exist in no site. romUUID: {romUUID}")
             continue
 
@@ -295,7 +296,7 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawl_start_time=Non
                     alrS_romID = romIDs[0]["romID"]
                     alrA_romID = romIDs[1]["romID"]
             else:
-                logger.critical(
+                log_critical_error(
                     f"Room doesn't exist in other site. romUUID: {romUUID}")
                 continue
 
