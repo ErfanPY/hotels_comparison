@@ -143,9 +143,9 @@ def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
         return -1
 
     for hotel in alibaba_hotels:
-        # # TODO remove
-        # if DEBUG_HOTEL_EN_NAME and not DEBUG_HOTEL_EN_NAME in hotel['enName']:
-        #     continue
+        if os.environ.get("SCRAPPER_DEBUG") == "1":
+            if os.environ.get("DEBUG_HOTEL_NAME") not in hotel['faName']:
+                continue
 
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
         if hotel_uuid is None:
@@ -182,6 +182,10 @@ def get_snapptrip_hotels_rooms(city_name, htlFaName_htlUUID):
         return -1, -1
 
     for counter, hotel in enumerate(snapptrip_hotels):
+        if os.environ.get("SCRAPPER_DEBUG") == "1":
+            if os.environ.get("DEBUG_HOTEL_NAME") not in hotel['faName']:
+                continue
+
         logger.debug(
             f"Snapptrip, hotel: {counter}/{len(snapptrip_hotels)}")
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
@@ -230,7 +234,7 @@ def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels, day_offset):
             logger.error("nonhandleable count of sites.")
     except Exception as e:
         log_critical_error(
-            f"Unhandled error on hotels compare.\n{e}", stack_info=True)
+            f"Unhandled error on hotels compare.\n{e}")
 
     return site_rooms
 
@@ -250,7 +254,7 @@ def scrape_no_uuid_hotels(none_uuid_hotels):
                 scrape_hotel(none_uuid_hotels[end_i])
         except Exception as e:
             log_critical_error(
-                f"Unhandled error on no uuid hotel.\n{e}", stack_info=True)
+                f"Unhandled error on no uuid hotel.\n{e}")
 
         front_i += 1
 

@@ -5,7 +5,7 @@ FROM python:3.8-alpine
 WORKDIR /scrapper
 
 COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY ./scrape ./scrape
 

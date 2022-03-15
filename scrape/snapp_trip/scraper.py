@@ -273,8 +273,9 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
 
     res_rooms = []
     rooms_name_id = {}
+    rooms_info_buff = []
 
-    for i, room in enumerate(rooms):
+    for room in rooms:
         res_room, room_name_id, rooms_info_buff = get_parse_room(
             hotel_id,
             hotel_site_id,
@@ -284,10 +285,11 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
         res_rooms.extend(res_room)
         rooms_name_id.update(room_name_id)
 
-    with get_db_connection() as conn:
-        err_check = insert_multiple_room_info(conn, rooms_info_buff)
-        if err_check == -1:
-            logger.error("adding availability info failed.")
+    if rooms and rooms_info_buff:
+        with get_db_connection() as conn:
+            err_check = insert_multiple_room_info(conn, rooms_info_buff)
+            if err_check == -1:
+                logger.error("adding availability info failed.")
 
     return res_rooms, rooms_name_id
 
