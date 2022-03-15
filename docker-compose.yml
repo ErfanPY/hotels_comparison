@@ -1,13 +1,15 @@
 version: '3.7'
 
-x-common_scrapper: &scrapper
+x-common_scrapper:
+  &scrapper
   image: erfan123a/hotels_comparison:latest
   env_file:
-      - .env
+    - .env
   volumes:
-      - ./:/scrapperd
-      - "/etc/timezone:/etc/timezone:ro"
-      - "/etc/localtime:/etc/localtime:ro"
+    - ./:/scrapperd
+    - "/etc/timezone:/etc/timezone:ro"
+    - "/etc/localtime:/etc/localtime:ro"
+  network_mode: host 
 
 services:
 
@@ -23,4 +25,4 @@ services:
     environment:
       - SCRAPE_TOGETHER=1
       - ALIBABA_SCRAPPER_SLEEP_TIME=0
-      - ALIBABA_TO_SCRAPE_CITIES=birjand,mashhad
+      - ALIBABA_TO_SCRAPE_CITIES=mashhad
