@@ -143,9 +143,8 @@ def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
         return -1
 
     for hotel in alibaba_hotels:
-        if os.environ.get("SCRAPPER_DEBUG") == "1":
-            if os.environ.get("DEBUG_HOTEL_NAME") not in hotel['faName']:
-                continue
+        if os.environ.get("DEBUG_HOTEL_NAME", "") not in hotel['faName']:
+            continue
 
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
         if hotel_uuid is None:
@@ -154,7 +153,6 @@ def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
             uuid_hotel[hotel_uuid] = hotel
         counter += 1
 
-    logger.info(f"Alibaba: {counter}")
     return uuid_hotel, no_uuid_hotels
 
 
@@ -178,19 +176,25 @@ def get_snapptrip_hotels_rooms(city_name, htlFaName_htlUUID):
     snapptrip_hotels = snapptrip_get_city_hotels(
         city_name=en_fa_cities[city_name])
 
+    logger.info(
+        f"Snapptrip city [{city_name}] hotels list scrapped, len: {len(snapptrip_hotels)}"
+    )
+
     if snapptrip_hotels == -1:
         return -1, -1
 
     for counter, hotel in enumerate(snapptrip_hotels):
-        if os.environ.get("SCRAPPER_DEBUG") == "1":
-            if os.environ.get("DEBUG_HOTEL_NAME") not in hotel['faName']:
-                continue
+        if os.environ.get("DEBUG_HOTEL_NAME", "") not in hotel['faName']:
+            continue
 
-        logger.debug(
-            f"Snapptrip, hotel: {counter}/{len(snapptrip_hotels)}")
         hotel_uuid = htlFaName_htlUUID.get(hotel['faName'])
 
         hotel['rooms'] = scrape_hotel(hotel)
+
+        logger.info(
+            f"[{counter+1}/{len(snapptrip_hotels)}] "
+            f"Snapptrip scrape hotel [{hotel_uuid or hotel.get('enName') or hotel.get('faName', 'NO_NAME')}] done."
+        )
 
         if hotel_uuid is None:
             no_uuid_hotels.append(hotel)
@@ -221,8 +225,6 @@ def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels, day_offset):
         ))
 
         site_rooms[hotel['hotel_from']] = filtered_rooms
-
-        logger.info(f" UUID - {j+1}/{len_hotels}")
 
     try:
         if len(site_rooms.keys()) == 2:

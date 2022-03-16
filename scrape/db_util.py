@@ -23,9 +23,13 @@ def get_db_connection(host=None, user=None, password=None, port=None, database=N
             )
             break
         except Exception as e:
+            counter+=1
+            if counter >= 10:
+                logger.critical(e)
+                raise Exception("Getting database connection failed.") 
+
             logger.error(e)
             time.sleep(2)
-
     return cnx
 
 

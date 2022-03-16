@@ -75,7 +75,7 @@ def main(crawl_date_start=None, crawl_date_end=None):
             single_room = list(htlFrom_groups.values())[0][0]
             single_rooms.append(single_room)
             logger.info(
-                f"{i}/{count_roomUUID} - single - {single_room['romUUID']} - {single_room['avlDate']} - {single_room['avlInsertionDate']}")
+                f"{i+1}/{count_roomUUID} - single - {single_room['romUUID']} - {single_room['avlDate']} - {single_room['avlInsertionDate']}")
 
         elif len(htlFrom_groups.keys()) == 2:
             crawl_start_datetime = htlFrom_groups['S'][0]['avlInsertionDate'].strftime(
@@ -94,7 +94,7 @@ def main(crawl_date_start=None, crawl_date_end=None):
                     break
                 time.sleep(2)
 
-            logger.info(f"{i}/{count_roomUUID} - dual")
+            logger.info(f"{i+1}/{count_roomUUID} - dual")
 
         else:
             log_critical_error(
@@ -249,7 +249,7 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawl_start_time=Non
     len_rooms = len(rooms)
     for i, room in enumerate(rooms):
         if i % 10 == 0:
-            print(f"Single: {i}/{len_rooms}")
+            logger.debug(f"add_single_available_rooms: {i+1}/{len_rooms}")
         insertion_datetime = room['avlInsertionDate']
 
         if crawl_start_time is None:
@@ -327,6 +327,7 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawl_start_time=Non
 
 if __name__ == "__main__":
     date = datetime.today().strftime("%Y-%m-%d")
+    # date = "2022-03-15"
     for st, en in [
         (f'{date} 00:00:00', f'{date} 12:00:00'),
         (f'{date} 12:00:00', f'{date} 24:00:00')

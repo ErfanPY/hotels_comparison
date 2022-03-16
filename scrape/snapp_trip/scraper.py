@@ -1,14 +1,11 @@
 import json
 import logging
 import os
-import queue
 import re
-import socket
 import time
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
 
-import socks
 from bs4 import BeautifulSoup
 from scrape.db_util import get_db_connection, insert_multiple_room_info, insert_select_id
 from scrape.common_utils import get_room_types
@@ -77,7 +74,7 @@ def get_city_hotels(city_name, day_offset=0):
 
     total_hotels_counter = 0
     page_no = 1
-    # do_break = False
+    do_break = False
 
     while True:
 
@@ -94,19 +91,19 @@ def get_city_hotels(city_name, day_offset=0):
 
             parsed_hotel = parse_hotel(hotel, city_name)
 
-            # if DEBUG_HOTEL_FA_NAME and not DEBUG_HOTEL_FA_NAME in parsed_hotel['faName']:
-            #     continue
+            if os.environ.get("DEBUG_HOTEL_NAME", "") not in parsed_hotel['faName']:
+                continue
 
             all_hotels.append(parsed_hotel)
 
             total_hotels_counter += 1
 
-            # if DEBUG_HOTEL_FA_NAME and DEBUG_HOTEL_FA_NAME in parsed_hotel["faName"]:
-            #     do_break = True
-            #     break
+            if os.environ.get("DEBUG_HOTEL_NAME", "") not in parsed_hotel['faName']:
+                do_break = True
+                break
 
-        # if do_break:
-        #     break
+        if do_break:
+            break
 
         next_page_div = search_page_soup.select_one('.pagination-next')
         if not next_page_div is None:
@@ -209,7 +206,7 @@ def scrape_hotel(hotel_url: str, hotel_name: str, hotel_site_id: str, city_name:
                 conn=conn
             )
 
-        if not hotel_id == -1:
+        if hotel_id != -1:
             break
         time.sleep(2)
 
@@ -321,6 +318,7 @@ def get_parse_room(hotel_id, hotel_site_id, room):
         'romMealPlan': meal_plan
     }
 
+    err_counter = 0
     while True:
         with get_db_connection() as conn:
             roomID_and_UUID = insert_select_id(
@@ -333,6 +331,10 @@ def get_parse_room(hotel_id, hotel_site_id, room):
 
         if not roomID_and_UUID == -1:
             break
+
+        err_counter += 1
+        if err_counter >= 10:
+            logger.critical("Snapptrip rooms insertion to database failed.")
 
         time.sleep(SLEEP_TIME)
 
@@ -381,26 +383,9 @@ def get_parse_room(hotel_id, hotel_site_id, room):
                 }
 
                 rooms_info_buff.append(room_avl_info)
-                # err_check = insert_select_id(
-                #     table="tblAvailabilityInfo",
-                #     key_value=room_avl_info,
-                #     identifier_condition={
-                #         "avl_romID": roomID_and_UUID['romID'],
-                #         "avlDate": day['date'],
-                #         "avlCrawlTime": CRAWL_START_DATETIME,
-                #     },
-                #     conn=conn
-                # )
-
-                # if err_check == -1:
-                #     logger.error("adding availability info failed.")
 
                 room_day_data.update(room_avl_info)
                 res_rooms.append(room_day_data)
-
-            # err_check = insert_multiple_room_info(conn, rooms_info_buff)
-            # if err_check == -1:
-            #     logger.error("adding availability info failed.")
 
     rooms_name_id[room_name] = roomID_and_UUID['romID']
 
