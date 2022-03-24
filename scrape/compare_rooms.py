@@ -290,11 +290,11 @@ def add_single_available_rooms(rooms, romUUID_romIDs, conn, crawl_start_time=Non
             )
             if len(romIDs) == 2:
                 if romIDs[0]['htlFrom'] == "S":
-                    alrS_romID = romIDs[1]["romID"]
-                    alrA_romID = romIDs[0]["romID"]
-                else:
                     alrS_romID = romIDs[0]["romID"]
                     alrA_romID = romIDs[1]["romID"]
+                else:
+                    alrA_romID = romIDs[0]["romID"]
+                    alrS_romID = romIDs[1]["romID"]
             else:
                 log_critical_error(
                     f"Room doesn't exist in other site. romUUID: {romUUID}")
