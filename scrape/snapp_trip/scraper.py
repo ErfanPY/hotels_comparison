@@ -53,11 +53,7 @@ CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 # DEBUG_HOTEL_FA_NAME = "آماتیس"
 
 
-def main(proxy_host: str = None, proxy_port: int = None):
-    # socks.set_default_proxy(proxy_host, proxy_port)
-    # if not proxy_host is None:
-    #     socket.socket = socks.socksocket
-
+def main():
     for city_name in to_scrape_cities:
 
         hotels = get_city_hotels(city_name)
@@ -270,10 +266,10 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
 
     res_rooms = []
     rooms_name_id = {}
-    rooms_info_buff = []
+    rooms_avl_infos = []
 
     for room in rooms:
-        res_room, room_name_id, rooms_info_buff = get_parse_room(
+        res_room, room_name_id, res_rooms_avl_info_buff = get_parse_room(
             hotel_id,
             hotel_site_id,
             room
@@ -281,12 +277,16 @@ def scrape_hotel_rooms(hotel_soup: BeautifulSoup, hotel_id: int, hotel_site_id: 
 
         res_rooms.extend(res_room)
         rooms_name_id.update(room_name_id)
+        rooms_avl_infos.append(res_rooms_avl_info_buff)
 
-    if rooms and rooms_info_buff:
-        with get_db_connection() as conn:
-            err_check = insert_multiple_room_info(conn, rooms_info_buff)
-            if err_check == -1:
-                logger.error("adding availability info failed.")
+    if rooms and rooms_avl_infos:
+        # res_rooms_info_buff contains a list of rooms availability info
+        # each item is a list of info specific to one room
+        for room_avl_infos in rooms_avl_infos:
+            with get_db_connection() as conn:
+                err_check = insert_multiple_room_info(conn, room_avl_infos)
+                if err_check == -1:
+                    logger.error("adding availability info failed.")
 
     return res_rooms, rooms_name_id
 
