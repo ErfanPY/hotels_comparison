@@ -108,8 +108,11 @@ def scrape_day(city_name, day_offset, snapptrip_uuid_hotel, snapptrip_no_uuid_ho
     len_uuid_hotels = len(uuid_hotels)
     for i, (uuid, hotels) in enumerate(uuid_hotels.items()):
         if uuid:
-            match_and_compare_hotels(
-                len_uuid_hotels, i, uuid, hotels, day_offset)
+            match_and_compare_hotels(hotels, day_offset)
+            logger.info(
+                f"[{i+1}/{len_uuid_hotels}]"
+                f"Hotel uuid [{uuid}] scrape and comapre done."
+            )
 
     no_uuid_hotels = alibaba_no_uuid_hotels+snapptrip_no_uuid_hotels
     scrape_no_uuid_hotels(no_uuid_hotels)
@@ -201,19 +204,14 @@ def get_snapptrip_hotels_rooms(city_name, htlFaName_htlUUID):
         else:
             uuid_hotel[hotel_uuid] = hotel
 
-    logger.info(f"Snapptrip: {counter}")
-
     return uuid_hotel, no_uuid_hotels
 
 
-def match_and_compare_hotels(len_uuid_hotels, i, uuid, hotels, day_offset):
-    logger.info(f"{uuid}: {i+1}/{len_uuid_hotels}")
-
+def match_and_compare_hotels(hotels, day_offset):
     site_rooms = {}
     offset_date = str((datetime.now() + timedelta(days=day_offset)).date())
 
-    len_hotels = len(hotels)
-    for j, hotel in enumerate(hotels):
+    for hotel in hotels:
         rooms = scrape_hotel(hotel)
 
         if rooms == -1:

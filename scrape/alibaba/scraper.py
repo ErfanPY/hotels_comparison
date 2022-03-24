@@ -1,12 +1,11 @@
 import logging
 import os
 import json
-import socket
 import time
 from datetime import datetime
 from urllib.parse import urljoin
 
-import socks
+from scrape.critical_log import log_critical_error
 from scrape.db_util import get_db_connection, insert_select_id
 from scrape.common_utils import get_room_types
 
@@ -59,7 +58,7 @@ SLEEP_TIME = int(os.environ.get("ALIBABA_SCRAPPER_SLEEP_TIME", "0"))
 CRAWL_START_DATETIME = datetime.now().strftime("%Y-%m-%d %H:00:00")
 
 
-def main(proxy_host: str = None, proxy_port: int = None):
+def main():
 
     for day_offset in range(START_DAY_OFFSET, 30):
         for city_name in TO_SCRAPE_CITIES:
@@ -214,17 +213,17 @@ def scrape_hotel(city_name: str, hotel: dict, session_id: str, date_from: str, d
             final_result = hotel_rooms_data['result']['finalResult']
             time.sleep(SLEEP_TIME)
 
-    rooms_counter = 0
     res_rooms = []
     for room_type in rooms:
 
-        room_type_id = room_type["id"]
         meal_plan = room_type['mealPlan']
         for room in room_type["rooms"]:
 
             romID, room_UUID, room_data = save_room(room=room, hotel_id=hotel_id, date_from=date_from,
                                                     meal_plan=meal_plan)
-            rooms_counter += 1
+            if romID == -1:
+                continue
+
 
             room_data.update({
                 "romID": romID,
@@ -234,7 +233,6 @@ def scrape_hotel(city_name: str, hotel: dict, session_id: str, date_from: str, d
 
             res_rooms.append(room_data)
 
-    # logger.info("Alibaba - Hotel: {} has {} rooms.".format(hotel['enName'], rooms_counter))
     return session_id, res_rooms
 
 
@@ -276,9 +274,17 @@ def save_room(room: dict, hotel_id: int, date_from: str, meal_plan: str) -> None
             if room_id_and_uuid == -1:
                 time.sleep(2)
                 continue
+            room_price = room['price']
 
-            if room['price'] > room['boardPrice']:
-                room['price'], room['boardPrice'] = room['boardPrice'], room['price']
+            if room_price is None:
+                log_critical_error(
+                    f"Alibaba - room uuid [{room_id_and_uuid['romUUID']}] "
+                    f"on date [{date_from}] price is None"
+                )
+                return -1, -1, -1
+
+            if room_price > room['boardPrice']:
+                room_price, room['boardPrice'] = room['boardPrice'], room_price
 
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             room_avl_info = {
@@ -287,7 +293,7 @@ def save_room(room: dict, hotel_id: int, date_from: str, meal_plan: str) -> None
                 "avlCrawlTime": CRAWL_START_DATETIME,
                 "avlInsertionDate": now,
                 "avlBasePrice": room['boardPrice'],
-                "avlDiscountPrice": room['price']
+                "avlDiscountPrice": room_price
             }
             err_check = insert_select_id(
                 table="tblAvailabilityInfo",
