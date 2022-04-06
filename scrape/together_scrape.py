@@ -143,7 +143,7 @@ def get_alibaba_hotels(city_name, day_offset, htlFaName_htlUUID):
     alibaba_hotels = a_get_city_hotels(city_name, day_offset)
 
     if alibaba_hotels == -1:
-        return -1
+        return -1, -1
 
     for hotel in alibaba_hotels:
         if os.environ.get("DEBUG_HOTEL_NAME", "") not in hotel['faName']:
@@ -179,12 +179,12 @@ def get_snapptrip_hotels_rooms(city_name, htlFaName_htlUUID):
     snapptrip_hotels = snapptrip_get_city_hotels(
         city_name=en_fa_cities[city_name])
 
+    if snapptrip_hotels == -1:
+        return -1, -1
+
     logger.info(
         f"Snapptrip city [{city_name}] hotels list scrapped, len: {len(snapptrip_hotels)}"
     )
-
-    if snapptrip_hotels == -1:
-        return -1, -1
 
     for counter, hotel in enumerate(snapptrip_hotels):
         if os.environ.get("DEBUG_HOTEL_NAME", "") not in hotel['faName']:
