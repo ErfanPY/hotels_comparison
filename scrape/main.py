@@ -18,7 +18,4 @@ if os.environ.get("SCRAPE_SNAPPTRIP") == "1":
 if os.environ.get("COMPARE_SCRAPES") == "1":
     comapre_runner()
 
-if os.environ.get("FIX_ABRV") == "1":
-    comapre_runner()
-
 print("DONE")
