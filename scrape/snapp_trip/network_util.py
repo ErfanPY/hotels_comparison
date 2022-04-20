@@ -1,7 +1,7 @@
 import logging
+from time import sleep
 from urllib.parse import urlparse
 from urllib.request import Request, quote, urlopen
-from time import sleep
 
 from bs4 import BeautifulSoup
 from scrape.critical_log import log_critical_error
