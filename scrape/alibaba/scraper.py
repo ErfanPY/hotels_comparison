@@ -276,7 +276,7 @@ def save_room(room: dict, hotel_id: int, date_from: str, meal_plan: str) -> None
 
             if room['boardPrice'] is None or room['price'] is None:
                 log_critical_error(
-                    f"Alibaba - room name [{room['name']}] "
+                    f"Alibaba - hotel [{hotel_id}] room name [{room['name']}] "
                     f"on date [{date_from}] price is None"
                 )
                 return -1, -1, -1
